@@ -1,0 +1,40 @@
+# Infraestructura local de desarrollo: PostgreSQL 16 + Redis 7.
+# Uso: copiar .env.example a .env y `docker compose up -d`.
+services:
+  postgres:
+    image: postgres:16
+    container_name: contave-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contave}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contave_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-contave}
+      # Hora legal de Venezuela (regla 15 de CLAUDE.md): timestamps en UTC, zona de negocio Caracas.
+      TZ: America/Caracas
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-contave} -d ${POSTGRES_DB:-contave}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: contave-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:

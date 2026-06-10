@@ -1,0 +1,24 @@
+{
+  "name": "@contave/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tipos, utilidades de dinero (Money/Decimal) y fechas America/Caracas. Lógica en P1.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

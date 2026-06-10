@@ -1,0 +1,13 @@
+# Normalizar finales de línea a LF para todo texto (dev en Windows, CI en Linux).
+# Evita que un checkout en Windows introduzca CRLF y rompa prettier --check / lint.
+* text=auto eol=lf
+
+# Binarios: sin conversión.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

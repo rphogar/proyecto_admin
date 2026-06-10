@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+
+# Especificación provista (no reformatear)
+docs/
+CLAUDE.md
