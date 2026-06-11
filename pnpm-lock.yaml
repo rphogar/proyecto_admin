@@ -218,7 +218,20 @@ importers:
         version: 2.1.9(@types/node@22.19.20)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.48.0)
 
   packages/shared:
+    dependencies:
+      decimal.js:
+        specifier: ^10.6.0
+        version: 10.6.0
+      luxon:
+        specifier: ^3.7.2
+        version: 3.7.2
     devDependencies:
+      '@types/luxon':
+        specifier: ^3.7.1
+        version: 3.7.1
+      fast-check:
+        specifier: ^3.23.2
+        version: 3.23.2
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -1831,6 +1844,9 @@ packages:
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
+
+  '@types/luxon@3.7.1':
+    resolution: {integrity: sha512-H3iskjFIAn5SlJU7OuxUmTEpebK6TKB8rxZShDslBMZJ5u9S//KM1sbdAisiSrqwLQncVjnpi2OK2J51h+4lsg==}
 
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
@@ -6000,6 +6016,8 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
+
+  '@types/luxon@3.7.1': {}
 
   '@types/methods@1.1.4': {}
 
