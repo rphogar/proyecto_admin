@@ -14,3 +14,5 @@ export * from './accounts';
 export * from './periods';
 export * from './journal-entries';
 export * from './journal-lines';
+// P4 — Tasas de cambio (BCV/manual/mercado), alcance híbrido tenant (NULL = global).
+export * from './exchange-rates';

@@ -1,3 +1,4 @@
+import { TasaDelDia } from '@/components/tasa-del-dia';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
@@ -8,6 +9,9 @@ export default function Home() {
         Sistema administrativo-contable-fiscal multimoneda para PYMEs venezolanas. Multimoneda
         nativa (VES fiscal / USD gerencial), cumplimiento SENIAT.
       </p>
+      <div className="w-full max-w-sm text-left">
+        <TasaDelDia moneda="USD" />
+      </div>
       <Button>Comenzar</Button>
     </main>
   );

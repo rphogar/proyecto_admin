@@ -57,6 +57,34 @@
       "when": 1781179143970,
       "tag": "0007_ledger_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781215701507,
+      "tag": "0008_exchange_rates",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781215701600,
+      "tag": "0009_exchange_rates_rls_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781215701700,
+      "tag": "0010_exchange_rates_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1781215701800,
+      "tag": "0011_seed_tasa_permission",
+      "breakpoints": true
     }
   ]
 }

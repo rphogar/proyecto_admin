@@ -20,3 +20,9 @@ export type { InstanteUtc } from './fechas/caracas';
 
 export { validarRif, esRifValido, calcularDigitoVerificadorRif } from './identificadores/rif';
 export type { TipoRif, MotivoRifInvalido, ResultadoRif } from './identificadores/rif';
+
+// Tasas de cambio (P4): resolución pura "última publicada anterior" y frescura para el banner.
+export { rateFor, tasaDeCierre } from './tasas/rate-for';
+export type { TasaCambio } from './tasas/rate-for';
+export { estadoFrescura, diasDeRezago } from './tasas/frescura';
+export type { EstadoFrescura } from './tasas/frescura';
