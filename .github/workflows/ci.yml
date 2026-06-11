@@ -28,3 +28,8 @@ jobs:
 
       - name: Lint + typecheck + tests + build
         run: pnpm turbo run lint typecheck test build
+
+      # Tests de integración (RLS, triggers, EXCLUDE) contra Postgres real vía testcontainers.
+      # ubuntu-latest trae Docker; no se necesitan `services:` en el YAML.
+      - name: Tests de integración (DB)
+        run: pnpm --filter @contave/api test:int

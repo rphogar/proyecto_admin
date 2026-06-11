@@ -13,6 +13,7 @@ export {
   fechaFiscal,
   periodoFiscal,
   limitesPeriodoMensual,
+  instanteCaracasISO,
   caracasAUtc,
 } from './fechas/caracas';
 export type { InstanteUtc } from './fechas/caracas';

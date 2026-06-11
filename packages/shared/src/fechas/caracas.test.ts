@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { caracasAUtc, fechaFiscal, limitesPeriodoMensual, periodoFiscal } from './caracas';
+import {
+  caracasAUtc,
+  fechaFiscal,
+  instanteCaracasISO,
+  limitesPeriodoMensual,
+  periodoFiscal,
+} from './caracas';
 
 describe('fechaFiscal — corte por hora de Caracas (UTC−4), no por UTC', () => {
   it('un instante del 1.° a las 02:00Z cae en el mes anterior en Caracas', () => {
@@ -61,6 +67,22 @@ describe('limitesPeriodoMensual — intervalo semiabierto en UTC', () => {
     // Un milisegundo antes del fin sigue siendo marzo; el fin ya es abril.
     expect(periodoFiscal(new Date(finUtc.getTime() - 1))).toEqual({ anio: 2026, mes: 3 });
     expect(periodoFiscal(finUtc)).toEqual({ anio: 2026, mes: 4 });
+  });
+});
+
+describe('instanteCaracasISO — mismo instante, hora legal de Venezuela', () => {
+  it('expresa un instante UTC con offset −04:00', () => {
+    // 2026-06-10T18:30Z = 2026-06-10T14:30 en Caracas.
+    expect(instanteCaracasISO('2026-06-10T18:30:00.000Z')).toBe('2026-06-10T14:30:00.000-04:00');
+  });
+
+  it('cruza de día hacia atrás cuando corresponde', () => {
+    // 2026-02-01T02:00Z = 2026-01-31T22:00 Caracas.
+    expect(instanteCaracasISO('2026-02-01T02:00:00.000Z')).toBe('2026-01-31T22:00:00.000-04:00');
+  });
+
+  it('rechaza instantes inválidos', () => {
+    expect(() => instanteCaracasISO('no-es-fecha')).toThrow();
   });
 });
 

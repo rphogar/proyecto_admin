@@ -7,6 +7,8 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['src/**/*.spec.ts'],
+    // Los *.int.spec.ts requieren Docker (testcontainers) y corren con `test:int`.
+    exclude: ['**/node_modules/**', 'src/**/*.int.spec.ts'],
     setupFiles: ['./test/setup.ts'],
   },
   plugins: [
