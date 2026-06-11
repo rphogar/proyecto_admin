@@ -71,6 +71,20 @@ export function limitesPeriodoMensual(
 }
 
 /**
+ * Instante (fecha y hora) en hora legal de Venezuela como ISO 8601 con offset `−04:00`,
+ * p.ej. `'2026-06-10T14:30:00.000-04:00'`. Se usa para `ts_caracas` en la auditoría
+ * (regla 5 de CLAUDE.md): el mismo instante que `ts_utc`, pero expresado en hora de Caracas.
+ */
+export function instanteCaracasISO(tsUtc: InstanteUtc): string {
+  const local = aDateTimeUtc(tsUtc).setZone(ZONA_CARACAS);
+  const iso = local.toISO();
+  if (iso === null) {
+    throw new Error(`No se pudo derivar el instante en Caracas de: ${String(tsUtc)}`);
+  }
+  return iso;
+}
+
+/**
  * Convierte una fecha/hora civil de Caracas (ISO, p.ej. `'2026-01-15'` o
  * `'2026-01-15T08:00'`) al instante UTC correspondiente.
  */
