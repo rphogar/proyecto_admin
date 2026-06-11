@@ -85,6 +85,34 @@
       "when": 1781215701800,
       "tag": "0011_seed_tasa_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781217359113,
+      "tag": "0012_maestros_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1781217359200,
+      "tag": "0013_maestros_rls_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1781217359300,
+      "tag": "0014_maestros_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1781217359400,
+      "tag": "0015_seed_maestros_permissions",
+      "breakpoints": true
     }
   ]
 }

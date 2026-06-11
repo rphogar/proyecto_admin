@@ -16,3 +16,12 @@ export * from './journal-entries';
 export * from './journal-lines';
 // P4 — Tasas de cambio (BCV/manual/mercado), alcance híbrido tenant (NULL = global).
 export * from './exchange-rates';
+// P5 — Maestros (company-scoped): terceros, ítems y precios, almacenes, listas, métodos de pago
+// y series de documentos (docs/05 §3.2 y §3.4).
+export * from './parties';
+export * from './items';
+export * from './price-lists';
+export * from './item-prices';
+export * from './warehouses';
+export * from './payment-methods';
+export * from './series';

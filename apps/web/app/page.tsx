@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { TasaDelDia } from '@/components/tasa-del-dia';
 import { Button } from '@/components/ui/button';
 
@@ -12,7 +13,12 @@ export default function Home() {
       <div className="w-full max-w-sm text-left">
         <TasaDelDia moneda="USD" />
       </div>
-      <Button>Comenzar</Button>
+      <div className="flex items-center gap-3">
+        <Button>Comenzar</Button>
+        <Button variant="outline" asChild>
+          <Link href="/maestros">Gestionar maestros</Link>
+        </Button>
+      </div>
     </main>
   );
 }
