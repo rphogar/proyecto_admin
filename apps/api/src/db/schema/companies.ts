@@ -28,6 +28,11 @@ export const companies = pgTable(
       .references(() => tenants.id, { onDelete: 'cascade' }),
     rif: text('rif').notNull(),
     razonSocial: text('razon_social').notNull(),
+    /**
+     * Domicilio fiscal del emisor: requisito obligatorio de la factura (00071 art. 6.1). Se
+     * snapshotea en cada documento al emitir; el validador pre-emisión exige que esté presente.
+     */
+    direccionFiscal: text('direccion_fiscal'),
     /** ORDINARIO | ESPECIAL | FORMAL — clasificación SENIAT del contribuyente. */
     tipoContribuyente: text('tipo_contribuyente').notNull().default('ORDINARIO'),
     /** Sujeto Pasivo Especial: si es agente de retención designado por el SENIAT. */

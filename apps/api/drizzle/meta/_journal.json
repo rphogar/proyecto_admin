@@ -113,6 +113,41 @@
       "when": 1781217359400,
       "tag": "0015_seed_maestros_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1781237510191,
+      "tag": "0016_documents_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781237510280,
+      "tag": "0017_documents_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781237510360,
+      "tag": "0018_documents_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781237510440,
+      "tag": "0019_seed_documents_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781237910202,
+      "tag": "0020_companies_direccion_fiscal",
+      "breakpoints": true
     }
   ]
 }

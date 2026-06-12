@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "direccion_fiscal" text;

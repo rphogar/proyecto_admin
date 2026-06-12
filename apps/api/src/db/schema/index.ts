@@ -25,3 +25,8 @@ export * from './item-prices';
 export * from './warehouses';
 export * from './payment-methods';
 export * from './series';
+// P6 — Documentos (núcleo administrativo): cabecera, líneas en triple base e IVA por alícuota,
+// con numeración consecutiva, emisión transaccional e inmutabilidad (docs/05 §3.4 y §4).
+export * from './documents';
+export * from './document-lines';
+export * from './document-taxes';
