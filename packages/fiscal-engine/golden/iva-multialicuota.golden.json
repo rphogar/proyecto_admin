@@ -1,0 +1,92 @@
+{
+  "_doc": "Golden IVA multi-alícuota por documento. Valores exactos verificados a mano. Casos 12, 14 y 22 del doc 07. base×tasa/100 con redondeo half-up a 2 decimales.",
+  "caso12_lineas_16_8_exentas": {
+    "_caso": "07 §B.12 — Factura con líneas gravadas 16%, 8% y exentas: bases e IVA discriminados por alícuota; los tres cuadran.",
+    "lineas": [
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "cantidad": "2", "precioUnitario": "1000.00" },
+      { "alicuotaCodigo": "REDUCIDA", "alicuotaTasa": "8", "cantidad": "3", "precioUnitario": "500.00" },
+      { "alicuotaCodigo": "EXENTO", "alicuotaTasa": "0", "cantidad": "1", "precioUnitario": "800.00" }
+    ],
+    "esperado": {
+      "grupos": [
+        { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "baseImponible": "2000.00", "iva": "320.00", "causaIva": true },
+        { "alicuotaCodigo": "REDUCIDA", "alicuotaTasa": "8", "baseImponible": "1500.00", "iva": "120.00", "causaIva": true },
+        { "alicuotaCodigo": "EXENTO", "alicuotaTasa": "0", "baseImponible": "800.00", "iva": "0.00", "causaIva": false }
+      ],
+      "baseImponibleGravada": "3500.00",
+      "ivaTotal": "440.00",
+      "baseExenta": "800.00",
+      "baseExportacion": "0.00",
+      "baseTotal": "4300.00",
+      "total": "4740.00"
+    }
+  },
+  "caso22_exportacion": {
+    "_caso": "07 §B.22 — Exportación: alícuota 0%, sin IGTF, libro de ventas columna exportaciones (separada de exentas).",
+    "lineas": [
+      { "alicuotaCodigo": "EXPORTACION", "alicuotaTasa": "0", "cantidad": "1", "precioUnitario": "5000.00" }
+    ],
+    "esperado": {
+      "grupos": [
+        { "alicuotaCodigo": "EXPORTACION", "alicuotaTasa": "0", "baseImponible": "5000.00", "iva": "0.00", "causaIva": false }
+      ],
+      "baseImponibleGravada": "0.00",
+      "ivaTotal": "0.00",
+      "baseExenta": "0.00",
+      "baseExportacion": "5000.00",
+      "baseTotal": "5000.00",
+      "total": "5000.00"
+    }
+  },
+  "caso12b_dos_lineas_misma_alicuota_con_descuento": {
+    "_caso": "Refuerzo §B.12 — dos líneas GENERAL suman a un solo renglón; descuento de línea reduce la base; ADICIONAL 31% suntuario en paralelo.",
+    "lineas": [
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "cantidad": "10", "precioUnitario": "100.00", "descuento": "100.00" },
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "cantidad": "1", "precioUnitario": "500.00" },
+      { "alicuotaCodigo": "ADICIONAL", "alicuotaTasa": "31", "cantidad": "1", "precioUnitario": "1000.00" }
+    ],
+    "esperado": {
+      "grupos": [
+        { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "baseImponible": "1400.00", "iva": "224.00", "causaIva": true },
+        { "alicuotaCodigo": "ADICIONAL", "alicuotaTasa": "31", "baseImponible": "1000.00", "iva": "310.00", "causaIva": true }
+      ],
+      "baseImponibleGravada": "2400.00",
+      "ivaTotal": "534.00",
+      "baseExenta": "0.00",
+      "baseExportacion": "0.00",
+      "baseTotal": "2400.00",
+      "total": "2934.00"
+    }
+  },
+  "caso14_cambio_alicuota_a_mitad_de_mes": {
+    "_caso": "07 §B.14 — Cambio de alícuota a mitad de mes (parámetro con vigencia): cada documento usa la tasa vigente a su fecha; el libro discrimina ambos tramos.",
+    "documentos": [
+      {
+        "_fecha": "antes del cambio (alícuota general 16%)",
+        "lineas": [{ "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "cantidad": "1", "precioUnitario": "1000.00" }],
+        "esperado": {
+          "grupos": [{ "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "baseImponible": "1000.00", "iva": "160.00", "causaIva": true }],
+          "baseImponibleGravada": "1000.00",
+          "ivaTotal": "160.00",
+          "baseExenta": "0.00",
+          "baseExportacion": "0.00",
+          "baseTotal": "1000.00",
+          "total": "1160.00"
+        }
+      },
+      {
+        "_fecha": "después del cambio (alícuota general 16,5% = tope legal)",
+        "lineas": [{ "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16.5", "cantidad": "1", "precioUnitario": "1000.00" }],
+        "esperado": {
+          "grupos": [{ "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16.5", "baseImponible": "1000.00", "iva": "165.00", "causaIva": true }],
+          "baseImponibleGravada": "1000.00",
+          "ivaTotal": "165.00",
+          "baseExenta": "0.00",
+          "baseExportacion": "0.00",
+          "baseTotal": "1000.00",
+          "total": "1165.00"
+        }
+      }
+    ]
+  }
+}

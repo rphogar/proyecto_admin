@@ -8,7 +8,7 @@ import {
   validarRequisitosFactura,
 } from '@contave/fiscal-engine';
 import { Asiento, postear } from '@contave/ledger';
-import { fechaFiscal, periodoFiscal } from '@contave/shared';
+import { Decimal, fechaFiscal, periodoFiscal } from '@contave/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService, type DatabaseTx } from '../db/database.service';
@@ -43,6 +43,7 @@ import {
   type DocumentoCalculado,
   type LineaBorrador,
 } from './calculo-documento';
+import { armarAsientoNotaCredito } from './calculo-nota';
 import { persistirAsiento } from './persistir-asiento';
 
 const DOC_TYPES = [
@@ -61,7 +62,7 @@ const DOC_TYPES = [
 const MEDIOS_EMISION = ['FORMA_LIBRE', 'MAQUINA_FISCAL', 'IMPRENTA_DIGITAL'] as const;
 const ALICUOTAS = ['GENERAL', 'REDUCIDA', 'ADICIONAL', 'EXENTO', 'EXONERADO', 'EXPORTACION'] as const;
 
-interface EntradaEmision {
+export interface EntradaEmision {
   companyId: string;
   seriesId: string;
   tipo: TipoDocumento;
@@ -78,8 +79,15 @@ interface EntradaEmision {
   adquirenteRif: string | null;
   adquirenteNombre: string | null;
   umbralConsumidorFinalVes: string | null;
+  /** Factura afectada (obligatorio para NC/ND, regla 4 / docs/02 §6.1). */
+  affectedDocumentId: string | null;
   lineas: LineaBorrador[];
 }
+
+/** Tipos que son notas (corrigen una factura afectada). */
+const TIPOS_NOTA: ReadonlySet<TipoDocumento> = new Set(['NOTA_CREDITO', 'NOTA_DEBITO']);
+/** Tipos que P8 sabe emitir con asiento (FACTURA, NC, ND). El resto llega en fases posteriores. */
+const TIPOS_EMISIBLES: ReadonlySet<TipoDocumento> = new Set(['FACTURA', 'NOTA_CREDITO', 'NOTA_DEBITO']);
 
 function parseLinea(raw: unknown, i: number): LineaBorrador {
   const b = asRecord(raw);
@@ -94,7 +102,7 @@ function parseLinea(raw: unknown, i: number): LineaBorrador {
   };
 }
 
-function parseEmision(body: unknown): EntradaEmision {
+export function parseEmision(body: unknown): EntradaEmision {
   const b = asRecord(body);
   const moneda = requireString(b.moneda, 'moneda', 12).toUpperCase();
   const esVes = moneda === 'VES';
@@ -132,6 +140,7 @@ function parseEmision(body: unknown): EntradaEmision {
     adquirenteRif: optionalString(b.adquirenteRif, 'adquirenteRif', 20),
     adquirenteNombre: optionalString(b.adquirenteNombre, 'adquirenteNombre', 500),
     umbralConsumidorFinalVes: optionalDecimal(b.umbralConsumidorFinalVes, 'umbralConsumidorFinalVes'),
+    affectedDocumentId: optionalUuid(b.affectedDocumentId, 'affectedDocumentId'),
     lineas: b.lineas.map(parseLinea),
   };
 }
@@ -168,8 +177,12 @@ export class EmisionService {
 
   async emitir(body: unknown): Promise<DocumentoEmitido> {
     const e = parseEmision(body);
-    if (e.tipo !== 'FACTURA') {
-      throw new BadRequestException('P6 solo emite FACTURA; NC/ND y otros tipos llegan en P7+');
+    if (!TIPOS_EMISIBLES.has(e.tipo)) {
+      throw new BadRequestException(`P8 emite FACTURA, NOTA_CREDITO y NOTA_DEBITO; ${e.tipo} llega en fases posteriores`);
+    }
+    const esNota = TIPOS_NOTA.has(e.tipo);
+    if (esNota && e.affectedDocumentId === null) {
+      throw new BadRequestException(`${e.tipo} requiere affectedDocumentId (factura afectada, regla 4)`);
     }
 
     return withTenant(this.database.db, async (tx) => {
@@ -183,6 +196,18 @@ export class EmisionService {
       }
       const party = e.partyId !== null ? await cargarTercero(tx, e.partyId, e.companyId) : null;
 
+      // NC/ND: cargar la factura afectada y, para NC, validar el saldo acreditable (caso 18).
+      const afectado = esNota ? await cargarDocumentoAfectado(tx, e.affectedDocumentId as string, e.companyId) : null;
+      if (e.tipo === 'NOTA_CREDITO' && afectado !== null) {
+        await validarSaldoAcreditable(tx, afectado, e.companyId, calcularDocumento({
+          tipo: e.tipo,
+          moneda: e.moneda,
+          rateBcv: e.rateBcv,
+          rateUsdMgmt: e.rateUsdMgmt,
+          lineas: e.lineas,
+        }).totales.totalVes);
+      }
+
       // 1) Cálculo multimoneda + IVA por alícuota (puro).
       const borrador: BorradorCalculo = {
         tipo: e.tipo,
@@ -195,7 +220,7 @@ export class EmisionService {
 
       // 2) Validador PRE-EMISIÓN (00071/00102). Antes de tocar la serie: una factura inválida no
       //    consume número ni bloquea la fila del contador.
-      const incumplimientos = validarRequisitosFactura(construirProyeccion(e, company, party, calc));
+      const incumplimientos = validarRequisitosFactura(construirProyeccion(e, company, party, calc, afectado));
       if (incumplimientos.length > 0) {
         throw new BadRequestException({
           message: 'El documento no cumple los requisitos de emisión (00071/00102)',
@@ -208,19 +233,35 @@ export class EmisionService {
       const periodId = await requerirPeriodoAbierto(tx, e.companyId, anio, mes);
       const cuentas = await cargarCuentas(tx, e.companyId);
 
-      // 4) Asiento de la factura (cuadra en triple base por construcción) → POSTED. El documento y
-      //    su asiento comparten id de origen (`sourceId`) para el drill-down documento ↔ asiento.
+      // 4) Asiento por tipo (cuadra en triple base por construcción) → POSTED. El documento y su
+      //    asiento comparten id de origen (`sourceId`) para el drill-down documento ↔ asiento. La NC
+      //    es el reverso (D Ventas/IVA, C Clientes); la ND y la factura usan la plantilla aditiva.
       const docId = randomUUID();
-      const entradaAsiento = armarAsientoFacturaVenta(calc, {
-        fecha: e.issueDate,
-        descripcion: `Factura ${serie.prefijo}${serie.nextNumber} a ${party?.razonSocial ?? 'consumidor final'}`,
-        moneda: e.moneda,
-        rateBcv: e.rateBcv,
-        rateUsdMgmt: e.rateUsdMgmt,
-        partyId: e.partyId,
-        companyId: e.companyId,
-        sourceId: docId,
-      });
+      const etiqueta = `${nombreTipo(e.tipo)} ${serie.prefijo}${serie.nextNumber} a ${party?.razonSocial ?? 'consumidor final'}`;
+      const entradaAsiento =
+        e.tipo === 'NOTA_CREDITO'
+          ? armarAsientoNotaCredito(calc, {
+              fecha: e.issueDate,
+              descripcion: etiqueta,
+              moneda: e.moneda,
+              rateBcv: e.rateBcv,
+              rateUsdMgmt: e.rateUsdMgmt,
+              partyId: e.partyId,
+              companyId: e.companyId,
+              sourceId: docId,
+              ...(afectado?.journalEntryId ? { reversalOf: afectado.journalEntryId } : {}),
+            })
+          : armarAsientoFacturaVenta(calc, {
+              fecha: e.issueDate,
+              descripcion: etiqueta,
+              moneda: e.moneda,
+              rateBcv: e.rateBcv,
+              rateUsdMgmt: e.rateUsdMgmt,
+              partyId: e.partyId,
+              companyId: e.companyId,
+              sourceId: docId,
+              sourceType: e.tipo,
+            });
       const asiento = postear(Asiento.construir(entradaAsiento));
       const entryId = await persistirAsiento(tx, asiento, {
         tenantId: ctx.tenantId,
@@ -273,6 +314,7 @@ export class EmisionService {
           rateBcv: e.rateBcv,
           rateUsdMgmt: e.rateUsdMgmt,
           paymentCondition: e.paymentCondition,
+          affectedDocumentId: e.affectedDocumentId,
           journalEntryId: entryId,
           totalOrigen: calc.totales.totalOrigen,
           totalVes: calc.totales.totalVes,
@@ -397,6 +439,65 @@ async function cargarTercero(tx: DatabaseTx, partyId: string, companyId: string)
   return row;
 }
 
+/** Etiqueta legible del tipo de documento para descripciones de asiento. */
+function nombreTipo(tipo: TipoDocumento): string {
+  if (tipo === 'NOTA_CREDITO') return 'Nota de crédito';
+  if (tipo === 'NOTA_DEBITO') return 'Nota de débito';
+  return 'Factura';
+}
+
+/** Carga la factura afectada por una NC/ND (debe estar emitida y pertenecer a la empresa). */
+async function cargarDocumentoAfectado(
+  tx: DatabaseTx,
+  documentId: string,
+  companyId: string,
+): Promise<typeof documents.$inferSelect> {
+  const [row] = await tx
+    .select()
+    .from(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.companyId, companyId)))
+    .limit(1);
+  if (row === undefined) {
+    throw new NotFoundException(`Documento afectado ${documentId} no encontrado en la empresa`);
+  }
+  if (row.status !== 'ISSUED' && row.status !== 'APPLIED') {
+    throw new BadRequestException('Solo se puede emitir una NC/ND sobre un documento ya emitido');
+  }
+  return row;
+}
+
+/**
+ * Valida que una NOTA DE CRÉDITO no acredite más que el saldo de la factura afectada (caso 18):
+ * saldo = total de la factura − Σ de las NC ya emitidas contra ella, en base VES.
+ */
+async function validarSaldoAcreditable(
+  tx: DatabaseTx,
+  afectado: typeof documents.$inferSelect,
+  companyId: string,
+  totalNcVes: string,
+): Promise<void> {
+  const totalFacturaVes = new Decimal(afectado.totalVes ?? '0');
+  const previas = await tx
+    .select({ totalVes: documents.totalVes })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.companyId, companyId),
+        eq(documents.type, 'NOTA_CREDITO'),
+        eq(documents.affectedDocumentId, afectado.id),
+        eq(documents.status, 'ISSUED'),
+      ),
+    );
+  const acreditadoPrevio = previas.reduce((acc, r) => acc.plus(r.totalVes ?? '0'), new Decimal(0));
+  const saldo = totalFacturaVes.minus(acreditadoPrevio);
+  if (new Decimal(totalNcVes).gt(saldo)) {
+    throw new BadRequestException(
+      `La NC (Bs ${totalNcVes}) excede el saldo acreditable de la factura (Bs ${saldo.toFixed(2)}); ` +
+        `no se puede acreditar más que el saldo pendiente (caso 18)`,
+    );
+  }
+}
+
 async function requerirPeriodoAbierto(tx: DatabaseTx, companyId: string, anio: number, mes: number): Promise<string> {
   const [row] = await tx
     .select({ id: periods.id, estado: periods.estado })
@@ -443,6 +544,7 @@ function construirProyeccion(
   company: typeof companies.$inferSelect,
   party: typeof parties.$inferSelect | null,
   calc: DocumentoCalculado,
+  afectado: typeof documents.$inferSelect | null,
 ): DocumentoAEmitir {
   const esConsumidorFinal = party === null;
   return {
@@ -480,6 +582,15 @@ function construirProyeccion(
     })),
     total: calc.totales.totalOrigen,
     ...(e.umbralConsumidorFinalVes !== null ? { umbralConsumidorFinalVes: e.umbralConsumidorFinalVes } : {}),
+    ...(afectado !== null
+      ? {
+          documentoAfectado: {
+            numero: afectado.number === null ? null : String(afectado.number),
+            fecha: afectado.issueFechaFiscal,
+            monto: afectado.totalOrigen ?? null,
+          },
+        }
+      : {}),
   };
 }
 

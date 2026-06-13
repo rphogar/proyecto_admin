@@ -30,3 +30,8 @@ export * from './series';
 export * from './documents';
 export * from './document-lines';
 export * from './document-taxes';
+// P8 — Ventas: cobros (cabecera, medios y aplicaciones a facturas), con asiento automático
+// (IGTF, diferencial cambiario, vuelto) e inmutabilidad de lo posteado (docs/06 M3, docs/03 §4.2).
+export * from './cobros';
+export * from './cobro-medios';
+export * from './cobro-aplicaciones';

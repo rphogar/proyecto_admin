@@ -1,5 +1,6 @@
 import { type MiddlewareConsumer, Module, type NestModule, RequestMethod } from '@nestjs/common';
 import { AuditModule } from './audit/audit.module';
+import { CobrosModule } from './cobros/cobros.module';
 import { DatabaseModule } from './db/database.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { HealthController } from './health/health.controller';
@@ -8,7 +9,7 @@ import { TasasModule } from './tasas/tasas.module';
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule],
+  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {

@@ -1,0 +1,89 @@
+{
+  "_doc": "Golden IGTF causado al pago sobre la porción en divisas (Ley IGTF; docs/02 §5). Valores exactos verificados a mano. Casos 4, 34 y 35 del doc 07. IGTF = base_divisa × alícuota/100, half-up a 2 decimales; lo percibe solo el SPE designado.",
+  "caso4_pago_mixto": {
+    "_caso": "07 §A.4 — Factura de $100; cliente paga Bs 10.000 (≈$40 a tasa 250) + $60 Zelle. IGTF solo sobre $60 → $1,80.",
+    "pago": {
+      "metodos": [
+        { "moneda": "VES", "montoOrigen": "10000.00", "esDivisa": false },
+        { "moneda": "USD", "montoOrigen": "60.00", "esDivisa": true, "rateBcv": "250" }
+      ],
+      "empresaEsPerceptor": true,
+      "alicuota": "3"
+    },
+    "esperado": {
+      "aplica": true,
+      "alicuota": "3",
+      "detalle": [
+        { "moneda": "USD", "base": "60.00", "igtf": "1.80", "igtfVes": "450.00" }
+      ],
+      "igtfTotalVes": "450.00"
+    }
+  },
+  "caso34a_solo_bs": {
+    "_caso": "07 §D.34 — Pago 100% en Bs por transferencia → IGTF 0 (no hay porción en divisas), aunque la empresa sea perceptora.",
+    "pago": {
+      "metodos": [{ "moneda": "VES", "montoOrigen": "10000.00", "esDivisa": false }],
+      "empresaEsPerceptor": true
+    },
+    "esperado": {
+      "aplica": false,
+      "alicuota": "3",
+      "detalle": [],
+      "igtfTotalVes": null
+    }
+  },
+  "caso34b_usd_efectivo_a_spe": {
+    "_caso": "07 §D.34 — Pago en USD efectivo a SPE → 3% percibido (asiento a 2.3.05).",
+    "pago": {
+      "metodos": [{ "moneda": "USD", "montoOrigen": "100.00", "esDivisa": true, "rateBcv": "40" }],
+      "empresaEsPerceptor": true
+    },
+    "esperado": {
+      "aplica": true,
+      "alicuota": "3",
+      "detalle": [{ "moneda": "USD", "base": "100.00", "igtf": "3.00", "igtfVes": "120.00" }],
+      "igtfTotalVes": "120.00"
+    }
+  },
+  "caso34c_empresa_no_perceptora": {
+    "_caso": "07 §D.34 — Mismo pago en USD pero la empresa NO es SPE designada agente de percepción → no se percibe IGTF.",
+    "pago": {
+      "metodos": [{ "moneda": "USD", "montoOrigen": "100.00", "esDivisa": true, "rateBcv": "40" }],
+      "empresaEsPerceptor": false
+    },
+    "esperado": {
+      "aplica": false,
+      "alicuota": "3",
+      "detalle": [],
+      "igtfTotalVes": null
+    }
+  },
+  "caso35_anticipo_no_se_duplica": {
+    "_caso": "07 §D.35 — Anticipo en divisas aplicado luego a la factura: el IGTF se causó al RECIBIR el anticipo, no al facturar; no se duplica.",
+    "evento_anticipo": {
+      "pago": {
+        "metodos": [{ "moneda": "USD", "montoOrigen": "50.00", "esDivisa": true, "rateBcv": "40" }],
+        "empresaEsPerceptor": true
+      },
+      "esperado": {
+        "aplica": true,
+        "alicuota": "3",
+        "detalle": [{ "moneda": "USD", "base": "50.00", "igtf": "1.50", "igtfVes": "60.00" }],
+        "igtfTotalVes": "60.00"
+      }
+    },
+    "evento_aplicacion_a_factura": {
+      "_nota": "Al emitir/aplicar la factura no hay nuevo pago en divisas → el motor devuelve 0; el IGTF no se vuelve a causar.",
+      "pago": {
+        "metodos": [],
+        "empresaEsPerceptor": true
+      },
+      "esperado": {
+        "aplica": false,
+        "alicuota": "3",
+        "detalle": [],
+        "igtfTotalVes": null
+      }
+    }
+  }
+}

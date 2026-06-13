@@ -1,0 +1,50 @@
+{
+  "_doc": "Golden prorrata mensual del crédito fiscal de IVA (Ley IVA art. 34). Valores exactos verificados a mano. Caso 13 del doc 07. porcentaje = gravadas/(gravadas+exentas); deducible + costo == crédito común exacto.",
+  "caso13_prorrata_80_20": {
+    "_caso": "07 §B.13 — Mes con ventas gravadas Bs 80.000 y exentas Bs 20.000 → solo 80% del crédito fiscal común es deducible; el 20% restante va al costo/gasto.",
+    "input": {
+      "ventasGravadas": "80000.00",
+      "ventasExentas": "20000.00",
+      "creditoComun": "5000.00"
+    },
+    "esperado": {
+      "porcentajeDeducible": "80.00",
+      "creditoComunDeducible": "4000.00",
+      "creditoComunAlCosto": "1000.00",
+      "creditoDeducible": "4000.00",
+      "creditoAlCosto": "1000.00"
+    }
+  },
+  "caso13b_con_creditos_directos": {
+    "_caso": "Refuerzo §B.13 — además del común hay crédito directo a gravadas (100% deducible) y directo a exentas (al costo). La prorrata solo toca el común.",
+    "input": {
+      "ventasGravadas": "80000.00",
+      "ventasExentas": "20000.00",
+      "creditoComun": "5000.00",
+      "creditoDirectoGravadas": "1200.00",
+      "creditoDirectoExentas": "300.00"
+    },
+    "esperado": {
+      "porcentajeDeducible": "80.00",
+      "creditoComunDeducible": "4000.00",
+      "creditoComunAlCosto": "1000.00",
+      "creditoDeducible": "5200.00",
+      "creditoAlCosto": "1300.00"
+    }
+  },
+  "caso13c_proporcion_no_exacta": {
+    "_caso": "Refuerzo §B.13 — proporción no redonda (gravadas 70.000 / total 90.000 = 77,7777...%): el común deducible se redondea y el costo se obtiene por diferencia (suman exacto).",
+    "input": {
+      "ventasGravadas": "70000.00",
+      "ventasExentas": "20000.00",
+      "creditoComun": "5000.00"
+    },
+    "esperado": {
+      "porcentajeDeducible": "77.78",
+      "creditoComunDeducible": "3888.89",
+      "creditoComunAlCosto": "1111.11",
+      "creditoDeducible": "3888.89",
+      "creditoAlCosto": "1111.11"
+    }
+  }
+}

@@ -211,13 +211,13 @@ export function calcularDocumento(borrador: BorradorCalculo): DocumentoCalculado
 // ── Asiento de la factura de venta (precursor de las plantillas de contabilización, docs/03 §5) ──
 
 /** Cuenta de clientes según la moneda del documento (Bs vs divisas). */
-const CUENTA_CLIENTES_VES = '1.2.01';
-const CUENTA_CLIENTES_DIVISA = '1.2.02';
+export const CUENTA_CLIENTES_VES = '1.2.01';
+export const CUENTA_CLIENTES_DIVISA = '1.2.02';
 /** IVA débito fiscal (pasivo). */
-const CUENTA_IVA_DEBITO = '2.3.01';
+export const CUENTA_IVA_DEBITO = '2.3.01';
 
-/** Cuenta de ingreso por alícuota (docs/03 §2). */
-function cuentaVentas(codigo: AlicuotaCodigo): string {
+/** Cuenta de ingreso por alícuota (docs/03 §2). Compartida por la factura y las NC/ND. */
+export function cuentaVentas(codigo: AlicuotaCodigo): string {
   switch (codigo) {
     case 'REDUCIDA':
       return '4.2';
@@ -243,12 +243,18 @@ export interface OpcionesAsientoFactura {
   readonly partyId?: string | null;
   readonly companyId?: string;
   readonly sourceId?: string;
+  /** Origen del asiento; default 'FACTURA'. La NOTA_DEBITO reutiliza esta misma plantilla aditiva. */
+  readonly sourceType?: string;
 }
 
 /**
  * Arma el asiento de una FACTURA de venta a partir del cálculo (cuentas por CÓDIGO; el servicio las
  * resuelve a id). D Clientes (total) ; C Ventas por alícuota (base) ; C IVA débito fiscal (Σ IVA).
  * Cuadra en las tres bases por construcción. Devuelve la `EntradaAsiento` (DRAFT) para postear.
+ *
+ * La NOTA_DEBITO (cargo adicional al cliente: intereses, ajuste de precio) tiene el mismo sentido
+ * contable que una venta y reutiliza esta plantilla con `sourceType: 'NOTA_DEBITO'`. La NOTA_CREDITO
+ * es el reverso → {@link armarAsientoNotaCredito} en `calculo-nota.ts`.
  */
 export function armarAsientoFacturaVenta(calc: DocumentoCalculado, opciones: OpcionesAsientoFactura): EntradaAsiento {
   const moneda = opciones.moneda.trim().toUpperCase();
@@ -307,7 +313,7 @@ export function armarAsientoFacturaVenta(calc: DocumentoCalculado, opciones: Opc
     fecha: opciones.fecha,
     descripcion: opciones.descripcion,
     lineas,
-    sourceType: 'FACTURA',
+    sourceType: opciones.sourceType ?? 'FACTURA',
     estado: 'DRAFT',
     ...(opciones.companyId !== undefined ? { companyId: opciones.companyId } : {}),
     ...(opciones.sourceId !== undefined ? { sourceId: opciones.sourceId } : {}),

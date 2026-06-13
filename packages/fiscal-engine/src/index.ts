@@ -1,8 +1,37 @@
 // @contave/fiscal-engine — motor fiscal puro (sin IO), 100% testeable.
 // Los cálculos de IVA multi-alícuota, prorrata, IGTF, retenciones IVA/ISLR y nómina son funciones
-// puras deterministas con golden tests; se implementan en P7+. La carpeta golden/ se crea junto
-// con el primer golden test numérico.
+// puras deterministas con golden tests (packages/fiscal-engine/golden/). Retenciones y nómina se
+// implementan en fases posteriores.
 export const FISCAL_ENGINE_PACKAGE = '@contave/fiscal-engine';
+
+// P7 — Motor de IVA multi-alícuota por documento (docs/02 §3; casos 12, 14, 22).
+export { calcularIvaDocumento } from './iva/calcular-iva';
+// `AlicuotaCodigo` ya se exporta desde ./facturacion/validar-requisitos (mismo dominio); no se
+// reexporta aquí para evitar el identificador duplicado.
+export type {
+  LineaIvaInput,
+  OpcionesIva,
+  GrupoIva,
+  ResultadoIvaDocumento,
+} from './iva/calcular-iva';
+
+// P7 — Prorrata mensual del crédito fiscal de IVA (Ley IVA art. 34; caso 13).
+export { calcularProrrata } from './iva/prorrata';
+export type {
+  ProrrataInput,
+  OpcionesProrrata,
+  ResultadoProrrata,
+} from './iva/prorrata';
+
+// P7 — Motor de IGTF causado al pago sobre la porción en divisas (docs/02 §5; casos 4, 34, 35).
+export { calcularIgtf, ALICUOTA_IGTF_DEFECTO } from './igtf/calcular-igtf';
+export type {
+  MetodoPagoIgtf,
+  PagoIgtf,
+  OpcionesIgtf,
+  DetalleIgtf,
+  ResultadoIgtf,
+} from './igtf/calcular-igtf';
 
 // P6 — Validador PRE-EMISIÓN de requisitos de facturación (00071/00102/00121): función pura que
 // devuelve la lista de incumplimientos antes de emitir un documento fiscal.
