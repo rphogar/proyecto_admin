@@ -1,0 +1,47 @@
+{
+  "_doc": "Golden retención de ISLR por concepto con sustraendo (Decreto 1.808). Valores exactos verificados a mano. Caso 31 del doc 07. retencion = max(0, base × tarifa% − sustraendo). El sustraendo de PN = valorUT × 83,3334 × tarifa% (UT 9 → 22,50 al 3%).",
+  "caso31_honorarios_pn_con_retencion": {
+    "_caso": "07 §C.31 — Honorarios profesionales a persona natural residente: 3% con sustraendo. Base 10.000, sustraendo 22,50 → 10.000×3% − 22,50 = 277,50.",
+    "input": {
+      "base": "10000.00",
+      "tarifa": "3",
+      "sustraendo": "22.50"
+    },
+    "esperado": {
+      "base": "10000.00",
+      "tarifa": "3",
+      "sustraendo": "22.50",
+      "retencion": "277.50",
+      "bajoUmbral": false
+    }
+  },
+  "caso31b_honorarios_pn_bajo_umbral": {
+    "_caso": "07 §C.31 — Si la base no supera el umbral, retención 0. Base 500: 500×3% = 15 ≤ sustraendo 22,50 → retención 0 (umbral = sustraendo/tarifa = 750).",
+    "input": {
+      "base": "500.00",
+      "tarifa": "3",
+      "sustraendo": "22.50"
+    },
+    "esperado": {
+      "base": "500.00",
+      "tarifa": "3",
+      "sustraendo": "22.50",
+      "retencion": "0.00",
+      "bajoUmbral": true
+    }
+  },
+  "caso31c_servicios_pj_sin_sustraendo": {
+    "_caso": "Refuerzo §C.31 — persona jurídica domiciliada (servicios 2%) no lleva sustraendo: 8.000×2% = 160.",
+    "input": {
+      "base": "8000.00",
+      "tarifa": "2"
+    },
+    "esperado": {
+      "base": "8000.00",
+      "tarifa": "2",
+      "sustraendo": "0.00",
+      "retencion": "160.00",
+      "bajoUmbral": false
+    }
+  }
+}

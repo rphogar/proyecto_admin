@@ -18,6 +18,12 @@ export default function Home() {
         <Button variant="outline" asChild>
           <Link href="/maestros">Gestionar maestros</Link>
         </Button>
+        <Button variant="outline" asChild>
+          <Link href="/ventas/facturas">Ventas</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/compras">Compras</Link>
+        </Button>
       </div>
     </main>
   );

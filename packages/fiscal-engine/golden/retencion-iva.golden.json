@@ -1,0 +1,29 @@
+{
+  "_doc": "Golden retención de IVA del agente (Providencia SNAT/2015/0049). Valores exactos verificados a mano. Casos 26 y 27 del doc 07. ivaRetenido = ivaFactura × porcentaje; ivaRetenido + ivaNoRetenido == ivaFactura.",
+  "caso26_retencion_75": {
+    "_caso": "07 §C.26 — Venta a SPE: cliente retiene 75% del IVA. Factura Bs 1.000 + IVA 160 → comprobante por 120; el proveedor sigue cobrando 40 de IVA (total cobrado 1.040).",
+    "input": {
+      "ivaFactura": "160.00",
+      "porcentaje": 75
+    },
+    "esperado": {
+      "porcentaje": "75",
+      "ivaFactura": "160.00",
+      "ivaRetenido": "120.00",
+      "ivaNoRetenido": "40.00"
+    }
+  },
+  "caso27_retencion_100": {
+    "_caso": "07 §C.27 — Retención 100% (proveedor con datos de RIF inconsistentes): el motor aplica 100% según el flag del tercero. Factura Bs 1.000 + IVA 160 → comprobante por 160; el proveedor no cobra IVA.",
+    "input": {
+      "ivaFactura": "160.00",
+      "porcentaje": 100
+    },
+    "esperado": {
+      "porcentaje": "100",
+      "ivaFactura": "160.00",
+      "ivaRetenido": "160.00",
+      "ivaNoRetenido": "0.00"
+    }
+  }
+}

@@ -33,6 +33,35 @@ export type {
   ResultadoIgtf,
 } from './igtf/calcular-igtf';
 
+// P9 — Retención de IVA del agente (75/100, Providencia 0049; docs/02 §3.3; casos 26, 27, 29).
+export { calcularRetencionIva, porcentajeRetencionIva } from './retenciones/retencion-iva';
+export type {
+  PorcentajeRetencionIva,
+  SeleccionPorcentajeInput,
+  RetencionIvaInput,
+  OpcionesRetencion,
+  ResultadoRetencionIva,
+} from './retenciones/retencion-iva';
+
+// P9 — Retención de ISLR por concepto con sustraendo (Decreto 1.808; docs/02 §4; caso 31).
+export { calcularRetencionIslr, sustraendoIslr, FACTOR_SUSTRAENDO_PN } from './retenciones/retencion-islr';
+export type {
+  RetencionIslrInput,
+  OpcionesRetencionIslr,
+  ResultadoRetencionIslr,
+} from './retenciones/retencion-islr';
+
+// P9 — Numeración normada del comprobante de retención (AAAAMMNNNNNNNN) y TXT del portal SENIAT.
+export { formatearNumeroComprobante, parsearNumeroComprobante } from './retenciones/comprobante-numero';
+export type { PeriodoComprobante, ComprobanteParseado } from './retenciones/comprobante-numero';
+export { generarTxtRetencionIva } from './retenciones/txt-retencion-iva';
+export type {
+  TipoDocumentoTxt,
+  TipoTransaccionTxt,
+  LineaRetencionIvaTxt,
+  OpcionesTxt,
+} from './retenciones/txt-retencion-iva';
+
 // P6 — Validador PRE-EMISIÓN de requisitos de facturación (00071/00102/00121): función pura que
 // devuelve la lista de incumplimientos antes de emitir un documento fiscal.
 export { validarRequisitosFactura } from './facturacion/validar-requisitos';

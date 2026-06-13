@@ -35,3 +35,11 @@ export * from './document-taxes';
 export * from './cobros';
 export * from './cobro-medios';
 export * from './cobro-aplicaciones';
+// P9 — Compras y retenciones: factura de proveedor (núm. y control obligatorios), líneas e IVA
+// crédito por alícuota, retención IVA 75/100 e ISLR por concepto como agente (comprobantes
+// emitidos) y comprobantes recibidos con imputación por período (docs/05 §3.4/§3.7, docs/02 §3.3/§4).
+export * from './purchases';
+export * from './purchase-lines';
+export * from './purchase-taxes';
+export * from './retentions-issued';
+export * from './retentions-received';

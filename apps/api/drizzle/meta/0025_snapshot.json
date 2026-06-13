@@ -1,6 +1,6 @@
 {
-  "id": "31fd9f78-a15e-4d41-9908-8aefef001bd1",
-  "prevId": "3585a18a-10e3-474b-b28f-89392c582318",
+  "id": "67eb3456-8949-46a6-9672-7a76b3d2db24",
+  "prevId": "2dc86b11-484c-41e4-a6c8-6550b6fbeb2f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3463,6 +3463,1181 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.purchases": {
+      "name": "purchases",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor_rif": {
+          "name": "proveedor_rif",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor_nombre": {
+          "name": "proveedor_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo_documento": {
+          "name": "tipo_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'FACTURA'"
+        },
+        "numero_documento": {
+          "name": "numero_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_control": {
+          "name": "numero_control",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_documento_afectado": {
+          "name": "numero_documento_afectado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cuenta_destino": {
+          "name": "cuenta_destino",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'5.2'"
+        },
+        "fecha_documento": {
+          "name": "fecha_documento",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_fiscal": {
+          "name": "fecha_fiscal",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exchange_rate_id": {
+          "name": "exchange_rate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_bcv": {
+          "name": "rate_bcv",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_usd_mgmt": {
+          "name": "rate_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "journal_entry_id": {
+          "name": "journal_entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_origen": {
+          "name": "base_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_ves": {
+          "name": "base_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_usd_mgmt": {
+          "name": "base_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "iva_origen": {
+          "name": "iva_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "iva_ves": {
+          "name": "iva_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "iva_usd_mgmt": {
+          "name": "iva_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_origen": {
+          "name": "total_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_ves": {
+          "name": "total_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_usd_mgmt": {
+          "name": "total_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retencion_iva_ves": {
+          "name": "retencion_iva_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retencion_islr_ves": {
+          "name": "retencion_islr_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hash_integridad": {
+          "name": "hash_integridad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'REGISTERED'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "purchases_tenant_id_tenants_id_fk": {
+          "name": "purchases_tenant_id_tenants_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchases_company_id_companies_id_fk": {
+          "name": "purchases_company_id_companies_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchases_branch_id_branches_id_fk": {
+          "name": "purchases_branch_id_branches_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "purchases_party_id_parties_id_fk": {
+          "name": "purchases_party_id_parties_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "parties",
+          "columnsFrom": [
+            "party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchases_exchange_rate_id_exchange_rates_id_fk": {
+          "name": "purchases_exchange_rate_id_exchange_rates_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "exchange_rates",
+          "columnsFrom": [
+            "exchange_rate_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchases_journal_entry_id_journal_entries_id_fk": {
+          "name": "purchases_journal_entry_id_journal_entries_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "journal_entries",
+          "columnsFrom": [
+            "journal_entry_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchases_created_by_users_id_fk": {
+          "name": "purchases_created_by_users_id_fk",
+          "tableFrom": "purchases",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "purchases_company_proveedor_doc_uq": {
+          "name": "purchases_company_proveedor_doc_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "company_id",
+            "party_id",
+            "numero_documento"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.purchase_lines": {
+      "name": "purchase_lines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchase_id": {
+          "name": "purchase_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linea_no": {
+          "name": "linea_no",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cantidad": {
+          "name": "cantidad",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "precio_unitario_origen": {
+          "name": "precio_unitario_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descuento_origen": {
+          "name": "descuento_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "alicuota_codigo": {
+          "name": "alicuota_codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alicuota_tasa": {
+          "name": "alicuota_tasa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_origen": {
+          "name": "base_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_ves": {
+          "name": "base_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_usd_mgmt": {
+          "name": "base_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iva_origen": {
+          "name": "iva_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "iva_ves": {
+          "name": "iva_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "iva_usd_mgmt": {
+          "name": "iva_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "purchase_lines_tenant_id_tenants_id_fk": {
+          "name": "purchase_lines_tenant_id_tenants_id_fk",
+          "tableFrom": "purchase_lines",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchase_lines_company_id_companies_id_fk": {
+          "name": "purchase_lines_company_id_companies_id_fk",
+          "tableFrom": "purchase_lines",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchase_lines_purchase_id_purchases_id_fk": {
+          "name": "purchase_lines_purchase_id_purchases_id_fk",
+          "tableFrom": "purchase_lines",
+          "tableTo": "purchases",
+          "columnsFrom": [
+            "purchase_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchase_lines_item_id_items_id_fk": {
+          "name": "purchase_lines_item_id_items_id_fk",
+          "tableFrom": "purchase_lines",
+          "tableTo": "items",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "purchase_lines_purchase_linea_uq": {
+          "name": "purchase_lines_purchase_linea_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "purchase_id",
+            "linea_no"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.purchase_taxes": {
+      "name": "purchase_taxes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchase_id": {
+          "name": "purchase_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alicuota_codigo": {
+          "name": "alicuota_codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alicuota_tasa": {
+          "name": "alicuota_tasa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_origen": {
+          "name": "base_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_ves": {
+          "name": "base_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_usd_mgmt": {
+          "name": "base_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_origen": {
+          "name": "monto_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_ves": {
+          "name": "monto_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_usd_mgmt": {
+          "name": "monto_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "purchase_taxes_tenant_id_tenants_id_fk": {
+          "name": "purchase_taxes_tenant_id_tenants_id_fk",
+          "tableFrom": "purchase_taxes",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchase_taxes_company_id_companies_id_fk": {
+          "name": "purchase_taxes_company_id_companies_id_fk",
+          "tableFrom": "purchase_taxes",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "purchase_taxes_purchase_id_purchases_id_fk": {
+          "name": "purchase_taxes_purchase_id_purchases_id_fk",
+          "tableFrom": "purchase_taxes",
+          "tableTo": "purchases",
+          "columnsFrom": [
+            "purchase_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "purchase_taxes_purchase_alicuota_uq": {
+          "name": "purchase_taxes_purchase_alicuota_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "purchase_id",
+            "alicuota_codigo"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.retentions_issued": {
+      "name": "retentions_issued",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchase_id": {
+          "name": "purchase_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor_rif": {
+          "name": "proveedor_rif",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor_nombre": {
+          "name": "proveedor_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_comprobante": {
+          "name": "numero_comprobante",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correlativo": {
+          "name": "correlativo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodo_anio": {
+          "name": "periodo_anio",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodo_mes": {
+          "name": "periodo_mes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "concepto_islr": {
+          "name": "concepto_islr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate_bcv": {
+          "name": "rate_bcv",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_origen": {
+          "name": "base_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_ves": {
+          "name": "base_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "porcentaje": {
+          "name": "porcentaje",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sustraendo_ves": {
+          "name": "sustraendo_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "monto_origen": {
+          "name": "monto_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_ves": {
+          "name": "monto_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_fiscal": {
+          "name": "fecha_fiscal",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "txt_export": {
+          "name": "txt_export",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hash_integridad": {
+          "name": "hash_integridad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "retentions_issued_tenant_id_tenants_id_fk": {
+          "name": "retentions_issued_tenant_id_tenants_id_fk",
+          "tableFrom": "retentions_issued",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "retentions_issued_company_id_companies_id_fk": {
+          "name": "retentions_issued_company_id_companies_id_fk",
+          "tableFrom": "retentions_issued",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "retentions_issued_purchase_id_purchases_id_fk": {
+          "name": "retentions_issued_purchase_id_purchases_id_fk",
+          "tableFrom": "retentions_issued",
+          "tableTo": "purchases",
+          "columnsFrom": [
+            "purchase_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "retentions_issued_party_id_parties_id_fk": {
+          "name": "retentions_issued_party_id_parties_id_fk",
+          "tableFrom": "retentions_issued",
+          "tableTo": "parties",
+          "columnsFrom": [
+            "party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "retentions_issued_created_by_users_id_fk": {
+          "name": "retentions_issued_created_by_users_id_fk",
+          "tableFrom": "retentions_issued",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "retentions_issued_company_tipo_numero_uq": {
+          "name": "retentions_issued_company_tipo_numero_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "company_id",
+            "tipo",
+            "numero_comprobante"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.retentions_received": {
+      "name": "retentions_received",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agente_rif": {
+          "name": "agente_rif",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agente_nombre": {
+          "name": "agente_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_comprobante": {
+          "name": "numero_comprobante",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodo_anio": {
+          "name": "periodo_anio",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodo_mes": {
+          "name": "periodo_mes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "concepto_islr": {
+          "name": "concepto_islr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate_bcv": {
+          "name": "rate_bcv",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_usd_mgmt": {
+          "name": "rate_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_origen": {
+          "name": "base_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_ves": {
+          "name": "base_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "porcentaje": {
+          "name": "porcentaje",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_origen": {
+          "name": "monto_origen",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_ves": {
+          "name": "monto_ves",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_usd_mgmt": {
+          "name": "monto_usd_mgmt",
+          "type": "numeric(20, 8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_comprobante": {
+          "name": "fecha_comprobante",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_recepcion": {
+          "name": "fecha_recepcion",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "journal_entry_id": {
+          "name": "journal_entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hash_integridad": {
+          "name": "hash_integridad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "retentions_received_tenant_id_tenants_id_fk": {
+          "name": "retentions_received_tenant_id_tenants_id_fk",
+          "tableFrom": "retentions_received",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "retentions_received_company_id_companies_id_fk": {
+          "name": "retentions_received_company_id_companies_id_fk",
+          "tableFrom": "retentions_received",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "retentions_received_document_id_documents_id_fk": {
+          "name": "retentions_received_document_id_documents_id_fk",
+          "tableFrom": "retentions_received",
+          "tableTo": "documents",
+          "columnsFrom": [
+            "document_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "retentions_received_party_id_parties_id_fk": {
+          "name": "retentions_received_party_id_parties_id_fk",
+          "tableFrom": "retentions_received",
+          "tableTo": "parties",
+          "columnsFrom": [
+            "party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "retentions_received_journal_entry_id_journal_entries_id_fk": {
+          "name": "retentions_received_journal_entry_id_journal_entries_id_fk",
+          "tableFrom": "retentions_received",
+          "tableTo": "journal_entries",
+          "columnsFrom": [
+            "journal_entry_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "retentions_received_created_by_users_id_fk": {
+          "name": "retentions_received_created_by_users_id_fk",
+          "tableFrom": "retentions_received",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "retentions_received_company_agente_numero_uq": {
+          "name": "retentions_received_company_agente_numero_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "company_id",
+            "party_id",
+            "numero_comprobante"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
