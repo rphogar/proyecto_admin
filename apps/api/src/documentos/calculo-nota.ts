@@ -21,11 +21,12 @@ import {
  * La NOTA DE DÉBITO (cargo adicional) tiene el mismo sentido contable que una venta y se contabiliza
  * con la plantilla aditiva `armarAsientoFacturaVenta(..., { sourceType: 'NOTA_DEBITO' })`.
  *
- * TODO-TRIBUTARISTA: si la NC reduce una CxC nacida a OTRA tasa, queda un diferencial cambiario
- * entre el valor de carga (tasa de la factura) y el de la NC (tasa de la NC). Aquí el asiento se
- * arma autoconsistente a la tasa de la NC; la reconciliación contra el valor de carga de la CxC
- * (línea de ajuste a 4.7/6.7) y si la NC reduce CxC vs genera reembolso a caja se decide en el
- * servicio según el documento 03 (pendiente de validación profesional).
+ * Decisión de diseño (regla 2/10: la tasa se congela POR documento): la NC es un documento fiscal
+ * NUEVO que congela la tasa de SU fecha; reversa ingreso/IVA y reduce la CxC TODO a esa tasa, de
+ * modo que cuadra en triple base por construcción y el libro de ventas del mes de la NC sale exacto
+ * (caso 8). El diferencial cambiario contra el valor de carga de la factura original NO se fuerza
+ * aquí (tendría signo/tratamiento ambiguos): se realiza al liquidar/saldar el neto, como cualquier
+ * CxC. TODO-TRIBUTARISTA: confirmar este criterio para la conciliación ISLR (docs/03 §4.2).
  */
 
 export interface OpcionesAsientoNota {

@@ -37,7 +37,6 @@ describe('armarAsientoNotaCredito (P8) — caso 8', () => {
         moneda: 'USD',
         rateBcv: '270',
         rateUsdMgmt: '270',
-        partyId: undefined,
       }),
     );
     expect(verificarCuadre(asiento.lineas).balanceado).toBe(true);

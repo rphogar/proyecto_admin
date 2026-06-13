@@ -83,6 +83,7 @@ export default function FacturasPage() {
                   <div className="flex justify-end gap-2">
                     {d.status === 'DRAFT' ? (
                       <>
+                        <Link href={`/ventas/facturas/${d.id}/editar`}><Button size="sm" variant="outline">Editar</Button></Link>
                         <Button size="sm" onClick={() => emitir.mutate(d.id)} disabled={emitir.isPending}>Emitir</Button>
                         <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm('¿Eliminar el borrador?')) eliminar.mutate(d.id); }}>Eliminar</Button>
                       </>

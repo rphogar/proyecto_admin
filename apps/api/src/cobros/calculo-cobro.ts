@@ -26,10 +26,13 @@ import { Decimal, type InstanteUtc, REDONDEO_FISCAL } from '@contave/shared';
  *  - Los residuos ≤ céntimo se ajustan con {@link balancearConRedondeo} (caso 4: "el resto de
  *    céntimos va a cuenta de redondeo").
  *
- * TODO-TRIBUTARISTA: el vuelto CRUZADO (recibir USD y devolver Bs, o viceversa) implica una venta de
- * divisas embebida; aquí el asiento contabiliza el vuelto en la misma moneda recibida y la
- * calculadora {@link calcularVuelto} ofrece la sugerencia cruzada para la UI. El asiento del swap de
- * divisas explícito (par esAjuste) queda pendiente de validación profesional.
+ * El vuelto CRUZADO (recibir USD y devolver Bs, o viceversa) es una venta de divisas embebida: la
+ * porción del ingreso que no salda la CxC se intercambia por la moneda del vuelto y se contabiliza
+ * como par de líneas de AJUSTE (`esAjuste`, excluidas del cuadre por moneda origen). La calculadora
+ * {@link calcularVuelto} da la sugerencia cruzada para la UI.
+ *
+ * TODO-TRIBUTARISTA: clasificación realizado/no realizado del diferencial para la conciliación ISLR
+ * (docs/03 §4.2): aquí se registra el efecto en VES (4.7/6.7); el etiquetado fiscal queda pendiente.
  */
 
 const DEC2 = 2;
@@ -139,18 +142,59 @@ export function calcularCobro(entrada: EntradaCobro): ResultadoCobro {
     ...(entrada.alicuotaIgtf !== undefined ? { alicuota: entrada.alicuotaIgtf } : {}),
   });
 
-  // 2) Entradas de caja por método (D) — el movimiento real para el arqueo.
-  for (const m of entrada.medios) {
-    const rate = m.rateBcv === null ? null : new Decimal(m.rateBcv);
-    const t = expandir(new Decimal(m.montoOrigen), m.moneda, rate, rateUsdMgmt);
-    lineas.push(lineaCaja('D', m.cuenta, m.moneda, t, rate, rateUsdMgmt));
+  // Clasificación del vuelto: en la MISMA moneda de un ingreso (operativo, neto contra la CxC) o
+  // CRUZADO (otra moneda → venta de divisas embebida, caso 5: se contabiliza como swap `esAjuste`).
+  const monedasIngreso = new Set(entrada.medios.map((m) => m.moneda.trim().toUpperCase()));
+  const sameVueltoPorMoneda = new Map<string, Decimal>();
+  const crossed: { cuenta: string; moneda: string; monto: Decimal; rate: Decimal | null; ves: Decimal }[] = [];
+  for (const v of entrada.vuelto ?? []) {
+    const cur = v.moneda.trim().toUpperCase();
+    const rate = v.rateBcv === null ? null : new Decimal(v.rateBcv);
+    const t = expandir(new Decimal(v.montoOrigen), cur, rate, rateUsdMgmt);
+    if (monedasIngreso.has(cur)) {
+      sameVueltoPorMoneda.set(cur, (sameVueltoPorMoneda.get(cur) ?? new Decimal(0)).plus(t.origen));
+      lineas.push(lineaCaja('C', v.cuenta, cur, t, rate, rateUsdMgmt)); // salida de caja (operativa)
+    } else {
+      crossed.push({ cuenta: v.cuenta, moneda: cur, monto: t.origen, rate, ves: t.ves });
+    }
   }
 
-  // 3) Vuelto entregado (C) — salida de caja en la misma moneda recibida.
-  for (const v of entrada.vuelto ?? []) {
-    const rate = v.rateBcv === null ? null : new Decimal(v.rateBcv);
-    const t = expandir(new Decimal(v.montoOrigen), v.moneda, rate, rateUsdMgmt);
-    lineas.push(lineaCaja('C', v.cuenta, v.moneda, t, rate, rateUsdMgmt));
+  // Reparto del vuelto cruzado (en VES) entre los ingresos en divisa que lo financian (greedy): esa
+  // porción del ingreso no salda la CxC, sino que se intercambia por la moneda del vuelto (swap).
+  let swapPendienteVes = crossed.reduce((a, c) => a.plus(c.ves), new Decimal(0));
+  const swapOrigenPorMedio = entrada.medios.map(() => new Decimal(0));
+  if (swapPendienteVes.gt('0.01')) {
+    entrada.medios.forEach((m, i) => {
+      if (swapPendienteVes.lte('0.01')) return;
+      const rate = m.rateBcv === null ? null : new Decimal(m.rateBcv);
+      const dispVes = expandir(new Decimal(m.montoOrigen), m.moneda, rate, rateUsdMgmt).ves;
+      const tomarVes = Decimal.min(dispVes, swapPendienteVes);
+      swapOrigenPorMedio[i] = m.moneda.trim().toUpperCase() === 'VES' ? tomarVes : tomarVes.div(rate ?? new Decimal(1));
+      swapPendienteVes = swapPendienteVes.minus(tomarVes);
+    });
+    if (swapPendienteVes.gt('0.01')) {
+      throw new Error('calcularCobro: el vuelto cruzado excede los ingresos en divisa que lo financian');
+    }
+  }
+
+  // 2) Entradas de caja por método (D). Si financia un vuelto cruzado, se parte en porción operativa
+  //    (salda la CxC) y porción de swap (`esAjuste`, intercambio de divisas).
+  entrada.medios.forEach((m, i) => {
+    const cur = m.moneda.trim().toUpperCase();
+    const rate = m.rateBcv === null ? null : new Decimal(m.rateBcv);
+    const swap = swapOrigenPorMedio[i] ?? new Decimal(0);
+    const operativo = new Decimal(m.montoOrigen).minus(swap);
+    if (operativo.gt(0)) {
+      lineas.push(lineaCaja('D', m.cuenta, cur, expandir(operativo, cur, rate, rateUsdMgmt), rate, rateUsdMgmt));
+    }
+    if (swap.gt(0)) {
+      lineas.push({ ...lineaCaja('D', m.cuenta, cur, expandir(swap, cur, rate, rateUsdMgmt), rate, rateUsdMgmt), esAjuste: true });
+    }
+  });
+
+  // 3) Vuelto cruzado entregado (C) — salida de caja en otra moneda, marcada `esAjuste` (swap).
+  for (const c of crossed) {
+    lineas.push({ ...lineaCaja('C', c.cuenta, c.moneda, expandir(c.monto, c.moneda, c.rate, rateUsdMgmt), c.rate, rateUsdMgmt), esAjuste: true });
   }
 
   // 4) IGTF percibido: efectivo adicional recibido en divisas (D caja) contra 2.3.05 (C).
@@ -161,12 +205,20 @@ export function calcularCobro(entrada: EntradaCobro): ResultadoCobro {
     lineas.push(lineaCaja('C', CUENTA_IGTF_PERCIBIDO, d.moneda, t, rate, rateUsdMgmt));
   }
 
-  // 5) Crédito a la CxC por la moneda de cada porción NETA (entrada − vuelto), a la tasa de CARGA.
-  //    La diferencia VES contra la tasa del cobro es el diferencial cambiario (paso 6).
-  const netoPorMoneda = netoAplicadoPorMoneda(entrada);
+  // 5) Crédito a la CxC por la moneda de la porción OPERATIVA neta (ingreso − vuelto mismo − swap), a
+  //    la tasa de CARGA. La diferencia VES contra la tasa del cobro es el diferencial (paso 6).
+  const operativoPorMoneda = new Map<string, Decimal>();
+  entrada.medios.forEach((m, i) => {
+    const cur = m.moneda.trim().toUpperCase();
+    const op = new Decimal(m.montoOrigen).minus(swapOrigenPorMedio[i] ?? new Decimal(0));
+    operativoPorMoneda.set(cur, (operativoPorMoneda.get(cur) ?? new Decimal(0)).plus(op));
+  });
+  for (const [cur, vto] of sameVueltoPorMoneda) {
+    operativoPorMoneda.set(cur, (operativoPorMoneda.get(cur) ?? new Decimal(0)).minus(vto));
+  }
   let aplicadoVes = new Decimal(0);
-  for (const [moneda, neto] of netoPorMoneda) {
-    if (neto.isZero()) continue;
+  for (const [moneda, neto] of operativoPorMoneda) {
+    if (neto.lte('0.000000001')) continue;
     const carry = moneda === 'VES' ? null : rateCarryBcv;
     const t = expandir(neto, moneda, carry, rateUsdMgmt);
     aplicadoVes = aplicadoVes.plus(t.ves);
@@ -236,20 +288,6 @@ function lineaCaja(
     ...(rateBcv !== null ? { rateBcv: rateBcv.toFixed() } : {}),
     rateUsdMgmt: rateUsdMgmt.toFixed(),
   };
-}
-
-/** Neto aplicado a la CxC por moneda = Σ entradas − Σ vueltos de esa moneda. */
-function netoAplicadoPorMoneda(entrada: EntradaCobro): Map<string, Decimal> {
-  const neto = new Map<string, Decimal>();
-  for (const m of entrada.medios) {
-    const k = m.moneda.trim().toUpperCase();
-    neto.set(k, (neto.get(k) ?? new Decimal(0)).plus(m.montoOrigen));
-  }
-  for (const v of entrada.vuelto ?? []) {
-    const k = v.moneda.trim().toUpperCase();
-    neto.set(k, (neto.get(k) ?? new Decimal(0)).minus(v.montoOrigen));
-  }
-  return neto;
 }
 
 function residualVesDe(lineas: ReadonlyArray<EntradaLinea>): Decimal {

@@ -93,6 +93,25 @@ describe('calcularVuelto — caso 5 (vuelto cruzado)', () => {
     expect(calcularVuelto('1450', '1450', '100')).toEqual({ vueltoVes: '0.00', vueltoUsd: '0.00' });
   });
 
+  it('vuelto CRUZADO ($20 USD → factura $14,50, vuelto en Bs) cuadra como swap esAjuste', () => {
+    const { a } = asiento({
+      fecha: FECHA,
+      descripcion: 'Cobro POS con vuelto cruzado',
+      saldo: { cuenta: '1.2.02', moneda: 'USD', rateCarryBcv: '100' },
+      rateUsdMgmt: '100',
+      empresaEsPerceptor: false,
+      medios: [{ cuenta: '1.1.02', moneda: 'USD', montoOrigen: '20', esDivisa: true, rateBcv: '100' }],
+      vuelto: [{ cuenta: '1.1.01', moneda: 'VES', montoOrigen: '550', rateBcv: null }],
+    });
+    expect(verificarCuadre(a.lineas).balanceado).toBe(true);
+    // El vuelto en Bs y la porción de divisa intercambiada son líneas de ajuste (swap).
+    const ajustes = a.lineas.filter((l) => l.esAjuste);
+    expect(ajustes.some((l) => l.cuenta === '1.1.01' && l.dc === 'C')).toBe(true);
+    // La CxC se salda por el neto operativo $14,50.
+    const cxc = a.lineas.find((l) => l.cuenta === '1.2.02' && l.dc === 'C');
+    expect(cxc?.montoUsdMgmt.aDecimal().eq('14.5')).toBe(true);
+  });
+
   it('el asiento de un cobro con vuelto en la misma moneda cuadra (arqueo real)', () => {
     // Compra $14,50, tendió $20 USD, vuelto $5,50 USD. CxC en USD a 100.
     const { a } = asiento({

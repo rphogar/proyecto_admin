@@ -28,6 +28,12 @@ interface LineaUI {
   alicuotaTasa: string;
 }
 
+/** Línea de la factura afectada, seleccionable para una NC/ND parcial. */
+interface NotaLineaUI extends LineaUI {
+  seleccionada: boolean;
+  cantidadMax: string;
+}
+
 const ALICUOTAS: { codigo: AlicuotaCodigo; tasa: string; etiqueta: string }[] = [
   { codigo: 'GENERAL', tasa: '16', etiqueta: 'General 16%' },
   { codigo: 'REDUCIDA', tasa: '8', etiqueta: 'Reducida 8%' },
@@ -54,16 +60,20 @@ const TIPO_ETIQUETA: Record<string, string> = {
 interface Props {
   tipo?: 'FACTURA' | 'NOTA_CREDITO' | 'NOTA_DEBITO';
   affectedDocumentId?: string | undefined;
+  /** Si se pasa, el editor carga ese BORRADOR para editarlo y emitirlo. */
+  documentoId?: string | undefined;
 }
 
 /**
  * Editor de factura/NC/ND (doc 06 M1): cabecera, líneas, panel de totales EN VIVO con IGTF estimado,
  * validador visible y botones Guardar borrador / Emitir / Emitir y cobrar. La UI NUNCA calcula
- * impuestos (regla 3): todo viene de `POST /documentos/calcular`.
+ * impuestos (regla 3): todo viene de `POST /documentos/calcular`. Soporta tres modos: factura nueva,
+ * edición de borrador (`documentoId`) y nota total/parcial por selección de líneas del afectado.
  */
-export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
+export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId, documentoId }: Props) {
   const { companyId } = useEmpresaActiva();
   const router = useRouter();
+  const esNota = tipo !== 'FACTURA';
 
   const [seriesId, setSeriesId] = useState('');
   const [partyId, setPartyId] = useState('');
@@ -71,6 +81,7 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
   const [paymentCondition, setPaymentCondition] = useState<'CONTADO' | 'CREDITO'>('CONTADO');
   const [numeroControl, setNumeroControl] = useState('');
   const [lineas, setLineas] = useState<LineaUI[]>([lineaVacia()]);
+  const [notaLineas, setNotaLineas] = useState<NotaLineaUI[]>([]);
   const [pagaEnDivisas, setPagaEnDivisas] = useState(false);
   const [calc, setCalc] = useState<ResultadoCalculo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,21 +90,83 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
   const [cobroAbierto, setCobroAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  // Maestros para los selectores.
   const parties = useQuery({ queryKey: ['parties', companyId], queryFn: () => partiesApi.listar(companyId as string), enabled: companyId !== null });
   const items = useQuery({ queryKey: ['items', companyId], queryFn: () => itemsApi.listar(companyId as string), enabled: companyId !== null });
   const series = useQuery({ queryKey: ['series', companyId], queryFn: () => seriesApi.listar(companyId as string), enabled: companyId !== null });
 
-  // Tasa BCV del día: del documento (si es divisa) y la gerencial USD (siempre). Visible y bloqueada.
   const tasaDoc = useQuery({ queryKey: ['tasa', moneda], queryFn: () => fetchTasaDelDia(moneda), enabled: moneda !== 'VES' });
   const tasaUsd = useQuery({ queryKey: ['tasa', 'USD'], queryFn: () => fetchTasaDelDia('USD') });
-
   const rateBcv = moneda === 'VES' ? null : (tasaDoc.data?.rate ?? null);
   const rateUsdMgmt = tasaUsd.data?.rate ?? null;
 
   const seriesDelTipo = useMemo(() => (series.data ?? []).filter((s: Serie) => s.docType === tipo), [series.data, tipo]);
 
-  // Construye el cuerpo para la API (cálculo, borrador, emisión).
+  // Modo edición de borrador: precarga la cabecera y las líneas del documento.
+  useEffect(() => {
+    if (documentoId === undefined) return;
+    documentosApi
+      .obtener(documentoId)
+      .then((d) => {
+        setSeriesId(d.documento.seriesId);
+        setPartyId(d.documento.partyId ?? '');
+        setMoneda(d.documento.currency);
+        setPaymentCondition((d.documento.paymentCondition as 'CONTADO' | 'CREDITO') ?? 'CONTADO');
+        setNumeroControl(d.documento.controlNumber ?? '');
+        setLineas(
+          d.lineas.map((l) => ({
+            itemId: l.itemId ?? null,
+            descripcion: l.descripcion,
+            cantidad: String(l.cantidad),
+            precioUnitarioOrigen: String(l.precioUnitarioOrigen),
+            descuentoOrigen: String(l.descuentoOrigen ?? '0'),
+            alicuotaCodigo: l.alicuotaCodigo,
+            alicuotaTasa: String(l.alicuotaTasa),
+          })),
+        );
+      })
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Error al cargar el borrador'));
+  }, [documentoId]);
+
+  // Modo nota: precarga las líneas de la factura afectada para seleccionarlas (total o parcial).
+  useEffect(() => {
+    if (affectedDocumentId === undefined) return;
+    documentosApi
+      .obtener(affectedDocumentId)
+      .then((d) => {
+        setMoneda(d.documento.currency);
+        if (d.documento.partyId) setPartyId(d.documento.partyId);
+        setNotaLineas(
+          d.lineas.map((l) => ({
+            itemId: l.itemId ?? null,
+            descripcion: l.descripcion,
+            cantidad: String(l.cantidad),
+            cantidadMax: String(l.cantidad),
+            precioUnitarioOrigen: String(l.precioUnitarioOrigen),
+            descuentoOrigen: String(l.descuentoOrigen ?? '0'),
+            alicuotaCodigo: l.alicuotaCodigo,
+            alicuotaTasa: String(l.alicuotaTasa),
+            seleccionada: true,
+          })),
+        );
+      })
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Error al cargar la factura afectada'));
+  }, [affectedDocumentId]);
+
+  // Líneas efectivas para el cálculo/emisión: en modo nota, las seleccionadas del afectado.
+  const lineasEfectivas: LineaUI[] = esNota
+    ? notaLineas
+        .filter((l) => l.seleccionada)
+        .map((l) => ({
+          itemId: l.itemId,
+          descripcion: l.descripcion,
+          cantidad: l.cantidad,
+          precioUnitarioOrigen: l.precioUnitarioOrigen,
+          descuentoOrigen: l.descuentoOrigen,
+          alicuotaCodigo: l.alicuotaCodigo,
+          alicuotaTasa: l.alicuotaTasa,
+        }))
+    : lineas;
+
   const construirInput = (): DocumentoInput | null => {
     if (companyId === null || rateUsdMgmt === null) return null;
     return {
@@ -111,23 +184,15 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
       pagosEstimados: pagaEnDivisas
         ? [{ moneda: moneda === 'VES' ? 'USD' : moneda, montoOrigen: calc?.calculo.totales.totalOrigen ?? '0', esDivisa: true, rateBcv: rateBcv ?? rateUsdMgmt }]
         : [],
-      lineas: lineas.map((l) => ({
-        itemId: l.itemId,
-        descripcion: l.descripcion,
-        cantidad: l.cantidad,
-        precioUnitarioOrigen: l.precioUnitarioOrigen,
-        descuentoOrigen: l.descuentoOrigen,
-        alicuotaCodigo: l.alicuotaCodigo,
-        alicuotaTasa: l.alicuotaTasa,
-      })),
+      lineas: lineasEfectivas,
     };
   };
 
-  // Cálculo EN VIVO (debounced) cuando cambian líneas/moneda/tasa/pago.
   useEffect(() => {
     const input = construirInput();
-    if (input === null || lineas.every((l) => l.descripcion.trim() === '')) {
+    if (input === null || input.lineas.length === 0 || input.lineas.every((l) => l.descripcion.trim() === '')) {
       setCalc(null);
+      setIncumplimientos([]);
       return;
     }
     const t = setTimeout(() => {
@@ -142,7 +207,7 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
     }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(lineas), moneda, rateBcv, rateUsdMgmt, partyId, seriesId, paymentCondition, numeroControl, pagaEnDivisas]);
+  }, [JSON.stringify(lineasEfectivas), moneda, rateBcv, rateUsdMgmt, partyId, seriesId, paymentCondition, numeroControl, pagaEnDivisas]);
 
   function setLinea(i: number, patch: Partial<LineaUI>) {
     setLineas((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
@@ -163,7 +228,11 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
     setGuardando(true);
     setError(null);
     try {
-      await documentosApi.crearBorrador(input);
+      if (documentoId !== undefined) {
+        await documentosApi.actualizarBorrador(documentoId, input);
+      } else {
+        await documentosApi.crearBorrador(input);
+      }
       router.push('/ventas/facturas');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error al guardar el borrador');
@@ -178,8 +247,14 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
     setGuardando(true);
     setError(null);
     try {
-      const r = await documentosApi.emitir(input);
-      setEmitido(r.documento.id);
+      let docId: string;
+      if (documentoId !== undefined) {
+        await documentosApi.actualizarBorrador(documentoId, input);
+        docId = (await documentosApi.emitirBorrador(documentoId)).documento.id;
+      } else {
+        docId = (await documentosApi.emitir(input)).documento.id;
+      }
+      setEmitido(docId);
       if (luegoCobrar) {
         setCobroAbierto(true);
       } else {
@@ -197,20 +272,23 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
   }
 
   const puedeEmitir = incumplimientos.length === 0 && calc !== null && seriesId !== '';
+  const titulo = documentoId !== undefined ? `Editar ${TIPO_ETIQUETA[tipo]}` : `Nueva ${TIPO_ETIQUETA[tipo]}`;
 
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Nueva {TIPO_ETIQUETA[tipo]}</h1>
-        <p className="text-sm text-muted-foreground">La pantalla muestra los totales y el validador en vivo; los impuestos los calcula el motor fiscal, no la UI.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
+        <p className="text-sm text-muted-foreground">
+          {esNota ? 'Selecciona las líneas de la factura afectada (total o parcial). ' : ''}
+          Los totales y el validador se calculan en vivo en el motor fiscal, no en la UI.
+        </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-4">
-          {/* Cabecera */}
           <section className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
             <Campo etiqueta="Cliente">
-              <Select value={partyId} onChange={(e) => setPartyId(e.target.value)}>
+              <Select value={partyId} onChange={(e) => setPartyId(e.target.value)} disabled={esNota}>
                 <option value="">Consumidor final</option>
                 {(parties.data ?? []).map((p: Party) => (
                   <option key={p.id} value={p.id}>{p.razonSocial} ({p.rif})</option>
@@ -226,7 +304,7 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
               </Select>
             </Campo>
             <Campo etiqueta="Moneda">
-              <Select value={moneda} onChange={(e) => setMoneda(e.target.value)}>
+              <Select value={moneda} onChange={(e) => setMoneda(e.target.value)} disabled={esNota}>
                 <option value="VES">VES (Bs)</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -246,57 +324,88 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
             </Campo>
           </section>
 
-          {/* Líneas */}
-          <section className="rounded-lg border p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-medium">Líneas</h2>
-              <Button size="sm" variant="outline" onClick={() => setLineas((ls) => [...ls, lineaVacia()])}>+ Línea</Button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {lineas.map((l, i) => (
-                <div key={i} className="grid grid-cols-12 items-center gap-2 text-sm">
-                  <Select className="col-span-3" value={l.itemId ?? ''} onChange={(e) => aplicarItem(i, e.target.value)}>
-                    <option value="">Texto libre</option>
-                    {(items.data ?? []).map((it: Item) => (
-                      <option key={it.id} value={it.id}>{it.sku} — {it.descripcion}</option>
-                    ))}
-                  </Select>
-                  <Input className="col-span-3" placeholder="Descripción" value={l.descripcion} onChange={(e) => setLinea(i, { descripcion: e.target.value })} />
-                  <Input className="col-span-1" type="number" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
-                  <Input className="col-span-2" type="number" value={l.precioUnitarioOrigen} onChange={(e) => setLinea(i, { precioUnitarioOrigen: e.target.value })} />
-                  <Select
-                    className="col-span-2"
-                    value={l.alicuotaCodigo}
-                    onChange={(e) => {
-                      const a = ALICUOTAS.find((x) => x.codigo === (e.target.value as AlicuotaCodigo))!;
-                      setLinea(i, { alicuotaCodigo: a.codigo, alicuotaTasa: a.tasa });
-                    }}
-                  >
-                    {ALICUOTAS.map((a) => (
-                      <option key={a.codigo} value={a.codigo}>{a.etiqueta}</option>
-                    ))}
-                  </Select>
-                  <button type="button" className="col-span-1 text-destructive" onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))} aria-label="Quitar línea">✕</button>
+          {esNota ? (
+            <section className="rounded-lg border p-4">
+              <h2 className="mb-2 text-sm font-medium">Líneas a acreditar (factura afectada)</h2>
+              {notaLineas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Cargando líneas de la factura afectada…</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {notaLineas.map((l, i) => (
+                    <div key={i} className="grid grid-cols-12 items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="col-span-1 size-4"
+                        checked={l.seleccionada}
+                        onChange={(e) => setNotaLineas((ls) => ls.map((x, j) => (j === i ? { ...x, seleccionada: e.target.checked } : x)))}
+                      />
+                      <span className="col-span-6">{l.descripcion}</span>
+                      <span className="col-span-2 text-right text-muted-foreground">x{l.precioUnitarioOrigen}</span>
+                      <Input
+                        className="col-span-3"
+                        type="number"
+                        value={l.cantidad}
+                        max={l.cantidadMax}
+                        disabled={!l.seleccionada}
+                        onChange={(e) => setNotaLineas((ls) => ls.map((x, j) => (j === i ? { ...x, cantidad: e.target.value } : x)))}
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">Reduce la cantidad para una NC parcial; el backend impide acreditar más que el saldo (caso 18).</p>
                 </div>
-              ))}
-            </div>
-          </section>
+              )}
+            </section>
+          ) : (
+            <section className="rounded-lg border p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-medium">Líneas</h2>
+                <Button size="sm" variant="outline" onClick={() => setLineas((ls) => [...ls, lineaVacia()])}>+ Línea</Button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {lineas.map((l, i) => (
+                  <div key={i} className="grid grid-cols-12 items-center gap-2 text-sm">
+                    <Select className="col-span-3" value={l.itemId ?? ''} onChange={(e) => aplicarItem(i, e.target.value)}>
+                      <option value="">Texto libre</option>
+                      {(items.data ?? []).map((it: Item) => (
+                        <option key={it.id} value={it.id}>{it.sku} — {it.descripcion}</option>
+                      ))}
+                    </Select>
+                    <Input className="col-span-3" placeholder="Descripción" value={l.descripcion} onChange={(e) => setLinea(i, { descripcion: e.target.value })} />
+                    <Input className="col-span-1" type="number" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
+                    <Input className="col-span-2" type="number" value={l.precioUnitarioOrigen} onChange={(e) => setLinea(i, { precioUnitarioOrigen: e.target.value })} />
+                    <Select
+                      className="col-span-2"
+                      value={l.alicuotaCodigo}
+                      onChange={(e) => {
+                        const a = ALICUOTAS.find((x) => x.codigo === (e.target.value as AlicuotaCodigo))!;
+                        setLinea(i, { alicuotaCodigo: a.codigo, alicuotaTasa: a.tasa });
+                      }}
+                    >
+                      {ALICUOTAS.map((a) => (
+                        <option key={a.codigo} value={a.codigo}>{a.etiqueta}</option>
+                      ))}
+                    </Select>
+                    <button type="button" className="col-span-1 text-destructive" onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))} aria-label="Quitar línea">✕</button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {error !== null && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={guardarBorrador} disabled={guardando}>Guardar borrador</Button>
             <Button onClick={() => emitir(false)} disabled={!puedeEmitir || guardando}>Emitir</Button>
-            <Button onClick={() => emitir(true)} disabled={!puedeEmitir || guardando}>Emitir y cobrar</Button>
+            {!esNota && <Button onClick={() => emitir(true)} disabled={!puedeEmitir || guardando}>Emitir y cobrar</Button>}
           </div>
         </div>
 
-        {/* Panel de totales EN VIVO + validador */}
         <aside className="flex flex-col gap-4">
           <section className="rounded-lg border p-4 text-sm">
             <h2 className="mb-2 font-medium">Totales</h2>
             {calc === null ? (
-              <p className="text-muted-foreground">Agrega líneas para ver los totales.</p>
+              <p className="text-muted-foreground">Agrega o selecciona líneas para ver los totales.</p>
             ) : (
               <div className="flex flex-col gap-1">
                 {calc.calculo.impuestos.map((t) => (
@@ -323,10 +432,12 @@ export function EditorFactura({ tipo = 'FACTURA', affectedDocumentId }: Props) {
                   <span>Equivalente USD</span>
                   <span>{calc.calculo.totales.totalUsdMgmt}</span>
                 </div>
-                <label className="mt-2 flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={pagaEnDivisas} onChange={(e) => setPagaEnDivisas(e.target.checked)} />
-                  Estimar IGTF si paga en divisas
-                </label>
+                {!esNota && (
+                  <label className="mt-2 flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={pagaEnDivisas} onChange={(e) => setPagaEnDivisas(e.target.checked)} />
+                    Estimar IGTF si paga en divisas
+                  </label>
+                )}
                 {pagaEnDivisas && (
                   <div className="flex justify-between text-amber-700">
                     <span>IGTF estimado (Bs)</span>

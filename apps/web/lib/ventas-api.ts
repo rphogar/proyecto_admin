@@ -97,12 +97,14 @@ export interface ResultadoCalculo {
 export interface Documento {
   id: string;
   type: string;
+  seriesId: string;
   number: number | null;
   controlNumber: string | null;
   status: 'DRAFT' | 'ISSUED' | 'CANCELLED' | 'APPLIED';
   currency: string;
   rateBcv: string | null;
   rateUsdMgmt: string | null;
+  partyId: string | null;
   partyNombre: string | null;
   partyRif: string | null;
   paymentCondition: string | null;
