@@ -89,6 +89,19 @@ export type {
   ResultadoDeclaracionIgtf,
 } from './declaraciones/declaracion-igtf';
 
+// P12 — Inventario: kardex y costo promedio ponderado móvil en doble base (docs/03 §4.3, art. 177
+// Ley ISLR; casos 37–39). Función pura: el servicio resuelve los stock_moves y este motor valora.
+export { calcularKardex, costoVigente, StockInsuficienteError } from './inventario/kardex';
+export type {
+  TipoMovimientoKardex,
+  CostoEntrada,
+  MovimientoKardex,
+  OpcionesKardex,
+  FilaKardex,
+  ResumenKardex,
+  CostoVigente,
+} from './inventario/kardex';
+
 // P6 — Validador PRE-EMISIÓN de requisitos de facturación (00071/00102/00121): función pura que
 // devuelve la lista de incumplimientos antes de emitir un documento fiscal.
 export { validarRequisitosFactura } from './facturacion/validar-requisitos';

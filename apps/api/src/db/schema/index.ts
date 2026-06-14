@@ -59,3 +59,10 @@ export * from './cierres-caja';
 export * from './cierre-caja-arqueos';
 export * from './reconciliations';
 export * from './revaluaciones';
+// P12 — Inventario (docs/06 M5, docs/05 §3.8): kardex append-only en doble base (stock_moves),
+// ajustes con motivo+aprobación (separación de deberes), traslados con estado EN_TRÁNSITO y conteos
+// físicos cuyas diferencias generan un ajuste. El costo promedio se deriva con @contave/fiscal-engine.
+export * from './stock-moves';
+export * from './ajustes-inventario';
+export * from './traslados';
+export * from './conteos';

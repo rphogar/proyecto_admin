@@ -1,0 +1,78 @@
+{
+  "_doc": "Golden del costo promedio ponderado móvil en doble base (docs/03 §4.3, art. 177 Ley ISLR). Caso 37 del doc 07. Valores exactos verificados a mano. promedioVes = 55000/20 = 2750; promedioUsd = (100 + 30000/270)/20 = 211.111111.../20 = 10.55555556 (8 dp half-up).",
+  "caso37_compras_monedas_distintas": {
+    "_caso": "07 §E.37 — Compra 10 und a $10 (tasa 250) + 10 und a Bs 3.000 c/u (≈$11,1 a tasa 270) → promedio correcto en AMBAS bases, kardex consistente.",
+    "input": {
+      "movimientos": [
+        {
+          "tipo": "COMPRA",
+          "direccion": "ENTRADA",
+          "cantidad": "10",
+          "costo": { "moneda": "USD", "costoUnit": "10", "rateBcv": "250" },
+          "referencia": "compra-1"
+        },
+        {
+          "tipo": "COMPRA",
+          "direccion": "ENTRADA",
+          "cantidad": "10",
+          "costo": { "moneda": "VES", "costoUnit": "3000", "rateBcv": "270" },
+          "referencia": "compra-2"
+        }
+      ]
+    },
+    "esperado": {
+      "saldoCantidad": "20",
+      "saldoValorVes": "55000.00000000",
+      "saldoValorUsd": "211.11111111",
+      "costoPromedioVes": "2750.00000000",
+      "costoPromedioUsd": "10.55555556"
+    },
+    "esperadoFilas": [
+      {
+        "costoUnitVes": "2500.00000000",
+        "costoUnitUsd": "10.00000000",
+        "saldoCantidad": "10",
+        "saldoValorVes": "25000.00000000",
+        "saldoValorUsd": "100.00000000",
+        "costoPromedioVes": "2500.00000000",
+        "costoPromedioUsd": "10.00000000"
+      },
+      {
+        "costoUnitVes": "3000.00000000",
+        "costoUnitUsd": "11.11111111",
+        "saldoCantidad": "20",
+        "saldoValorVes": "55000.00000000",
+        "saldoValorUsd": "211.11111111",
+        "costoPromedioVes": "2750.00000000",
+        "costoPromedioUsd": "10.55555556"
+      }
+    ]
+  },
+  "caso37b_venta_al_promedio": {
+    "_caso": "07 §E.37 (extensión) — Tras las dos compras, vender 5 und sale al promedio vigente (2750 Bs / 10,55555556 USD) y el promedio NO cambia; el saldo queda en 15 und.",
+    "input": {
+      "movimientos": [
+        {
+          "tipo": "COMPRA",
+          "direccion": "ENTRADA",
+          "cantidad": "10",
+          "costo": { "moneda": "USD", "costoUnit": "10", "rateBcv": "250" }
+        },
+        {
+          "tipo": "COMPRA",
+          "direccion": "ENTRADA",
+          "cantidad": "10",
+          "costo": { "moneda": "VES", "costoUnit": "3000", "rateBcv": "270" }
+        },
+        { "tipo": "VENTA", "direccion": "SALIDA", "cantidad": "5" }
+      ]
+    },
+    "esperado": {
+      "saldoCantidad": "15",
+      "saldoValorVes": "41250.00000000",
+      "saldoValorUsd": "158.33333333",
+      "costoPromedioVes": "2750.00000000",
+      "costoPromedioUsd": "10.55555556"
+    }
+  }
+}
