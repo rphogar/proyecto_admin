@@ -24,6 +24,9 @@ export default function Home() {
         <Button variant="outline" asChild>
           <Link href="/compras">Compras</Link>
         </Button>
+        <Button variant="outline" asChild>
+          <Link href="/tesoreria/posicion">Tesorería</Link>
+        </Button>
       </div>
     </main>
   );

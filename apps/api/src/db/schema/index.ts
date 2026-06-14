@@ -47,3 +47,15 @@ export * from './retentions-received';
 // (docs/05 §3.7, docs/06 M7). Los libros de compras/ventas se derivan en vivo de document_taxes/
 // purchase_taxes (única fuente de verdad), no se materializan como tabla.
 export * from './tax-returns';
+// P11 — Tesorería y conciliación (docs/06 M4): cuentas bancarias y estados de cuenta importados,
+// transferencias internas con conversión y diferencial, cierres de caja con arqueo por método,
+// conciliación n:m banco⇄sistema con score, y revaluación mensual idempotente de saldos en divisas
+// (diferencial no realizado, casos 5 y 11). La posición consolidada se DERIVA del ledger (regla 8).
+export * from './bank-accounts';
+export * from './bank-statements';
+export * from './statement-lines';
+export * from './transferencias';
+export * from './cierres-caja';
+export * from './cierre-caja-arqueos';
+export * from './reconciliations';
+export * from './revaluaciones';

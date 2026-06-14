@@ -9,9 +9,10 @@ import { ImpuestosModule } from './impuestos/impuestos.module';
 import { MaestrosModule } from './maestros/maestros.module';
 import { TasasModule } from './tasas/tasas.module';
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
+import { TesoreriaModule } from './tesoreria/tesoreria.module';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule],
+  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {

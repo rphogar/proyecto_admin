@@ -232,6 +232,34 @@
       "when": 1781388195238,
       "tag": "0032_seed_impuestos_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781412219331,
+      "tag": "0033_tesoreria_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781412299331,
+      "tag": "0034_tesoreria_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1781412379331,
+      "tag": "0035_tesoreria_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1781412459331,
+      "tag": "0036_seed_tesoreria_permissions",
+      "breakpoints": true
     }
   ]
 }
