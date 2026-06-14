@@ -5,12 +5,13 @@ import { ComprasModule } from './compras/compras.module';
 import { DatabaseModule } from './db/database.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { HealthController } from './health/health.controller';
+import { ImpuestosModule } from './impuestos/impuestos.module';
 import { MaestrosModule } from './maestros/maestros.module';
 import { TasasModule } from './tasas/tasas.module';
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule],
+  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {

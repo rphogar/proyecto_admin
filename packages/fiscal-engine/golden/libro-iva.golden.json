@@ -1,0 +1,57 @@
+{
+  "_doc": "Golden P10 — libro de ventas/compras y planilla IVA sobre un mes sintético. Valores verificados a mano. Garantiza el kernel de la triple igualdad: libro.ivaTotal (débito/crédito) == planilla. La igualdad con los documentos se verifica en el test de integración del API (apps/api).",
+  "mes_sintetico": {
+    "ventas": [
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "base": "10000.00", "monto": "1600.00", "factor": 1 },
+      { "alicuotaCodigo": "REDUCIDA", "alicuotaTasa": "8", "base": "2000.00", "monto": "160.00", "factor": 1 },
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "base": "5000.00", "monto": "800.00", "factor": 1 },
+      { "alicuotaCodigo": "EXENTO", "alicuotaTasa": "0", "base": "1000.00", "monto": "0", "factor": 1 },
+      { "alicuotaCodigo": "EXPORTACION", "alicuotaTasa": "0", "base": "3000.00", "monto": "0", "factor": 1 },
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "base": "1000.00", "monto": "160.00", "factor": -1 }
+    ],
+    "compras": [
+      { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "base": "8000.00", "monto": "1280.00", "factor": 1 },
+      { "alicuotaCodigo": "REDUCIDA", "alicuotaTasa": "8", "base": "1000.00", "monto": "80.00", "factor": 1 }
+    ],
+    "retencionesSoportadasIva": "300.00",
+    "libroVentasEsperado": {
+      "grupos": [
+        { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "base": "14000.00", "monto": "2240.00" },
+        { "alicuotaCodigo": "REDUCIDA", "alicuotaTasa": "8", "base": "2000.00", "monto": "160.00" }
+      ],
+      "baseGravada": "16000.00",
+      "ivaTotal": "2400.00",
+      "baseExenta": "1000.00",
+      "baseExportacion": "3000.00",
+      "baseTotal": "20000.00",
+      "totalConIva": "22400.00"
+    },
+    "libroComprasEsperado": {
+      "grupos": [
+        { "alicuotaCodigo": "GENERAL", "alicuotaTasa": "16", "base": "8000.00", "monto": "1280.00" },
+        { "alicuotaCodigo": "REDUCIDA", "alicuotaTasa": "8", "base": "1000.00", "monto": "80.00" }
+      ],
+      "baseGravada": "9000.00",
+      "ivaTotal": "1360.00",
+      "baseExenta": "0.00",
+      "baseExportacion": "0.00",
+      "baseTotal": "9000.00",
+      "totalConIva": "10360.00"
+    },
+    "planillaEsperada": {
+      "debitoFiscal": "2400.00",
+      "creditoFiscalDelPeriodo": "1360.00",
+      "porcentajeProrrata": "100.00",
+      "creditoFiscalDeducible": "1360.00",
+      "creditoFiscalAlCosto": "0.00",
+      "excedenteCreditoAnterior": "0.00",
+      "cuotaTributaria": "1040.00",
+      "retencionesDelPeriodo": "300.00",
+      "excedenteRetencionesAnterior": "0.00",
+      "retencionesAcumuladas": "300.00",
+      "cuotaAPagar": "740.00",
+      "excedenteCreditoSiguiente": "0.00",
+      "excedenteRetencionesSiguiente": "0.00"
+    }
+  }
+}

@@ -43,3 +43,7 @@ export * from './purchase-lines';
 export * from './purchase-taxes';
 export * from './retentions-issued';
 export * from './retentions-received';
+// P10 — Impuestos: declaraciones por período (IVA/IGTF/…) con snapshot inmutable al presentar
+// (docs/05 §3.7, docs/06 M7). Los libros de compras/ventas se derivan en vivo de document_taxes/
+// purchase_taxes (única fuente de verdad), no se materializan como tabla.
+export * from './tax-returns';

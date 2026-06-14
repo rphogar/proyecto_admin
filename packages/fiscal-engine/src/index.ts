@@ -62,6 +62,33 @@ export type {
   OpcionesTxt,
 } from './retenciones/txt-retencion-iva';
 
+// P10 — Resumen del Libro de Compras / Ventas (Reglamento IVA arts. 70–78; docs/02 §7.2). Misma
+// fuente que la declaración → garantiza la triple igualdad libro ≡ documentos ≡ planilla (docs/05 §7.3).
+export { resumirLibro } from './libros/resumen-libro';
+export type {
+  FilaImpuestoLibro,
+  OpcionesResumen,
+  GrupoResumen,
+  ResumenLibro,
+} from './libros/resumen-libro';
+
+// P10 — Planilla borrador de IVA (forma 99030; docs/02 §3.2; casos 13, 17, 26, 28, 30) y
+// declaración de IGTF percibido (docs/02 §5; casos 34, 35).
+export { calcularPlanillaIva } from './declaraciones/planilla-iva';
+export type {
+  GrupoPlanillaIva,
+  PlanillaIvaInput,
+  OpcionesPlanillaIva,
+  ResultadoPlanillaIva,
+} from './declaraciones/planilla-iva';
+export { calcularDeclaracionIgtf } from './declaraciones/declaracion-igtf';
+export type {
+  FilaIgtf,
+  OpcionesDeclaracionIgtf,
+  GrupoIgtf,
+  ResultadoDeclaracionIgtf,
+} from './declaraciones/declaracion-igtf';
+
 // P6 — Validador PRE-EMISIÓN de requisitos de facturación (00071/00102/00121): función pura que
 // devuelve la lista de incumplimientos antes de emitir un documento fiscal.
 export { validarRequisitosFactura } from './facturacion/validar-requisitos';
