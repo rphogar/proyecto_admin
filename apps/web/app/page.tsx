@@ -13,8 +13,10 @@ export default function Home() {
       <div className="w-full max-w-sm text-left">
         <TasaDelDia moneda="USD" />
       </div>
-      <div className="flex items-center gap-3">
-        <Button>Comenzar</Button>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Button asChild>
+          <Link href="/dashboard">Mi negocio hoy</Link>
+        </Button>
         <Button variant="outline" asChild>
           <Link href="/maestros">Gestionar maestros</Link>
         </Button>

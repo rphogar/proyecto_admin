@@ -17,6 +17,8 @@ export {
   caracasAUtc,
 } from './fechas/caracas';
 export type { InstanteUtc } from './fechas/caracas';
+export { ventanasVentas } from './fechas/ventanas';
+export type { VentanaFechas, VentanasComparativas, VentanasVentas } from './fechas/ventanas';
 
 export { validarRif, esRifValido, calcularDigitoVerificadorRif } from './identificadores/rif';
 export type { TipoRif, MotivoRifInvalido, ResultadoRif } from './identificadores/rif';
