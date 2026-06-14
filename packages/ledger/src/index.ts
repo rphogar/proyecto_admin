@@ -90,3 +90,19 @@ export {
   saldoDeudorVes,
   saldoEnNaturalezaVes,
 } from './saldos/saldos';
+export {
+  balanceDeComprobacionDesdeMovimientos,
+  type BalanceDobleBase,
+  type FilaBalanceDobleBase,
+} from './saldos/balance-doble-base';
+
+// --- Estados financieros (P13) -----------------------------------------------
+export {
+  estadoDeResultados,
+  type EstadoResultados,
+  estadoDeSituacion,
+  type EstadoSituacion,
+  type NodoEstado,
+  rollupPorNivel,
+  type SaldoDobleBase,
+} from './reportes/estados-financieros';

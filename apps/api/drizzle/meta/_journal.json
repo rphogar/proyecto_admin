@@ -288,6 +288,34 @@
       "when": 1781450870010,
       "tag": "0040_seed_inventario_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1781468043625,
+      "tag": "0041_contabilidad_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1781468123625,
+      "tag": "0042_contabilidad_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1781468203625,
+      "tag": "0043_contabilidad_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1781468283625,
+      "tag": "0044_seed_contabilidad_permissions",
+      "breakpoints": true
     }
   ]
 }

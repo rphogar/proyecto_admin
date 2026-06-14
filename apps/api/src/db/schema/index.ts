@@ -66,3 +66,9 @@ export * from './stock-moves';
 export * from './ajustes-inventario';
 export * from './traslados';
 export * from './conteos';
+// P13 — Contabilidad y cierre (docs/06 M6, docs/03 §5–6): asientos manuales (con soportes),
+// plantillas de contabilización versionadas (aditivas: no reescriben el posting automático),
+// y la corrida del wizard de cierre mensual que bloquea el período (idempotente, casos 11/42/43).
+export * from './posting-templates';
+export * from './manual-entry-attachments';
+export * from './cierres-mensuales';
