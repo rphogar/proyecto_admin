@@ -316,6 +316,34 @@
       "when": 1781468283625,
       "tag": "0044_seed_contabilidad_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1781486460480,
+      "tag": "0045_nomina_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1781486540480,
+      "tag": "0046_nomina_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1781486620480,
+      "tag": "0047_nomina_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1781486700480,
+      "tag": "0048_seed_nomina_permissions",
+      "breakpoints": true
     }
   ]
 }

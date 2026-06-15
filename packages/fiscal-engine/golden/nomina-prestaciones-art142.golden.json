@@ -1,0 +1,57 @@
+{
+  "_descripcion": "Caso 50 doc 07 §G — Liquidación con 12 años de antigüedad: doble cálculo art. 142. Vía garantía = abonos trimestrales + días adicionales + intereses; vía retroactiva = 30 × años × último salario integral diario; se paga el MAYOR, menos anticipos, más indemnización art. 92 si el despido es injustificado. Incluye el cálculo de intereses capitalizados anualmente. Verificado a mano.",
+  "caso50_retroactivo_mayor": {
+    "input": {
+      "garantiaAbonada": 180000,
+      "diasAdicionalesAbonados": 15000,
+      "interesesAcumulados": 20000,
+      "antiguedadAnios": 12,
+      "salarioIntegralDiarioFinal": 675,
+      "adelantos": 30000,
+      "despidoInjustificado": true
+    },
+    "esperado": {
+      "viaGarantia": "215000.00",
+      "viaRetroactiva": "243000.00",
+      "baseMayor": "RETROACTIVA",
+      "prestaciones": "243000.00",
+      "adelantos": "30000.00",
+      "prestacionesACancelar": "213000.00",
+      "indemnizacionArt92": "243000.00",
+      "totalAPagar": "456000.00"
+    }
+  },
+  "caso50b_garantia_mayor": {
+    "input": {
+      "garantiaAbonada": 300000,
+      "diasAdicionalesAbonados": 20000,
+      "interesesAcumulados": 40000,
+      "antiguedadAnios": 10,
+      "salarioIntegralDiarioFinal": 900
+    },
+    "esperado": {
+      "viaGarantia": "360000.00",
+      "viaRetroactiva": "270000.00",
+      "baseMayor": "GARANTIA",
+      "prestaciones": "360000.00",
+      "adelantos": "0.00",
+      "prestacionesACancelar": "360000.00",
+      "indemnizacionArt92": "0.00",
+      "totalAPagar": "360000.00"
+    }
+  },
+  "intereses_capitalizados": {
+    "movimientos": [
+      { "anio": 1, "deposito": 100000, "tasaAnual": 10 },
+      { "anio": 2, "deposito": 100000, "tasaAnual": 10 }
+    ],
+    "esperado": {
+      "saldoFinal": "231000.00",
+      "interesesTotales": "31000.00",
+      "detalle": [
+        { "anio": 1, "saldoBase": "100000.00", "interes": "10000.00", "saldoFinal": "110000.00" },
+        { "anio": 2, "saldoBase": "210000.00", "interes": "21000.00", "saldoFinal": "231000.00" }
+      ]
+    }
+  }
+}

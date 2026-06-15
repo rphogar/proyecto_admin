@@ -102,6 +102,48 @@ export type {
   CostoVigente,
 } from './inventario/kardex';
 
+// P15 — Motor de nómina puro (LOTTT; docs/04; casos 47–50). Fórmulas seguras (DSL/AST sin eval),
+// salarios normal/integral, parafiscales IVSS/RPE/FAOV/INCES, prestaciones art. 142 (doble cálculo)
+// e intereses, recibo de nómina y provisiones mensuales.
+export {
+  evaluarFormula,
+  validarFormula,
+  FormulaInvalidaError,
+  derivarSalarios,
+  resolverSalarioNormalMensual,
+  semanasCotizablesDelMes,
+  calcularParafiscales,
+  calcularPrestacionesArt142,
+  interesesPrestaciones,
+  calcularReciboNomina,
+  calcularProvisionesMes,
+  DECIMALES_NOMINA,
+} from './nomina';
+export type {
+  ScopeFormula,
+  ValorScope,
+  SalariosInput,
+  ResultadoSalarios,
+  ComponenteSalario,
+  RiesgoIvss,
+  AlicuotasParafiscales,
+  ParafiscalesInput,
+  ResultadoParafiscales,
+  DetalleRegimen,
+  PrestacionesArt142Input,
+  ResultadoPrestacionesArt142,
+  MovimientoInteres,
+  DetalleInteresAnio,
+  ResultadoIntereses,
+  TipoConcepto,
+  ConceptoNomina,
+  ReciboInput,
+  LineaRecibo,
+  ResultadoRecibo,
+  ProvisionesMesInput,
+  ResultadoProvisionesMes,
+} from './nomina';
+
 // P6 — Validador PRE-EMISIÓN de requisitos de facturación (00071/00102/00121): función pura que
 // devuelve la lista de incumplimientos antes de emitir un documento fiscal.
 export { validarRequisitosFactura } from './facturacion/validar-requisitos';

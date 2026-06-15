@@ -1,0 +1,46 @@
+{
+  "_descripcion": "Caso 47 doc 07 §G — Ingreso a mitad de período. Quincena 16–31 (16 días); ingreso el día 20 → 12 días efectivos. Salario mensual 18.000 → salario_diario 600. Cestaticket mensual 3.000 → diario 100, proporcional a los 12 días. Retención S.S.O. del trabajador sobre lo devengado. Valores verificados a mano.",
+  "caso47_ingreso_medio_periodo": {
+    "input": {
+      "scope": {
+        "salario_diario": 600,
+        "dias": 12,
+        "cestaticket_diario": 100,
+        "dias_cestaticket": 12
+      },
+      "conceptos": [
+        {
+          "codigo": "sueldo",
+          "nombre": "Sueldo quincena",
+          "tipo": "ASIGNACION",
+          "salarial": true,
+          "formula": "salario_diario * dias"
+        },
+        {
+          "codigo": "cestaticket",
+          "nombre": "Cestaticket socialista",
+          "tipo": "ASIGNACION",
+          "salarial": false,
+          "formula": "cestaticket_diario * dias_cestaticket"
+        },
+        {
+          "codigo": "sso",
+          "nombre": "Retención S.S.O.",
+          "tipo": "DEDUCCION",
+          "formula": "round(total_devengado_salarial * 0.04, 2)"
+        }
+      ]
+    },
+    "esperado": {
+      "lineas": [
+        { "codigo": "sueldo", "nombre": "Sueldo quincena", "tipo": "ASIGNACION", "salarial": true, "monto": "7200.00" },
+        { "codigo": "cestaticket", "nombre": "Cestaticket socialista", "tipo": "ASIGNACION", "salarial": false, "monto": "1200.00" },
+        { "codigo": "sso", "nombre": "Retención S.S.O.", "tipo": "DEDUCCION", "salarial": false, "monto": "288.00" }
+      ],
+      "totalAsignaciones": "8400.00",
+      "totalDeducciones": "288.00",
+      "totalDevengadoSalarial": "7200.00",
+      "neto": "8112.00"
+    }
+  }
+}

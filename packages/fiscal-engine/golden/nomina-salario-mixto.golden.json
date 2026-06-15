@@ -1,0 +1,46 @@
+{
+  "_descripcion": "Caso 48 doc 07 §G — Salario mixto Bs 10.000 + USD 200 a tasa 40 → 18.000 VES. Días utilidades 30, bono 15 → integral diario 675, integral mensual 20.250. Parafiscales: salario mínimo 150; tope IVSS 5 SM=750, tope RPE 10 SM=1.500; riesgo medio (10%); 4 semanas; empresa 5+ (INCES patronal). Todas las incidencias se calculan sobre el total y el IVSS/RPE quedan TOPADOS. Verificado a mano.",
+  "caso48_salario_mixto": {
+    "componentes": [
+      { "moneda": "VES", "monto": 10000 },
+      { "moneda": "USD", "monto": 200, "rate": 40 }
+    ],
+    "salarioNormalMensualEsperado": "18000.00000000",
+    "salarios": {
+      "input": { "salarioNormalMensual": "18000.00000000", "diasUtilidades": 30, "diasBonoVacacional": 15 },
+      "esperado": {
+        "salarioNormalMensual": "18000.00000000",
+        "salarioDiario": "600.00000000",
+        "alicuotaUtilidadesDia": "50.00000000",
+        "alicuotaBonoVacacionalDia": "25.00000000",
+        "salarioDiarioIntegral": "675.00000000",
+        "salarioIntegralMensual": "20250.00000000"
+      }
+    },
+    "parafiscales": {
+      "input": {
+        "salarioNormalMensual": "18000.00000000",
+        "salarioIntegralMensual": "20250.00000000",
+        "salarioMinimoMensual": 150,
+        "riesgoIvss": "medio",
+        "semanasCotizables": 4,
+        "utilidadesPagadas": 0,
+        "cincoOMasTrabajadores": true,
+        "alicuotas": {
+          "ivss": { "trabajador": 4, "patronoPorRiesgo": { "minimo": 9, "medio": 10, "maximo": 11 }, "topeSalariosMinimos": 5 },
+          "rpe": { "trabajador": 0.5, "patrono": 2, "topeSalariosMinimos": 10 },
+          "faov": { "trabajador": 1, "patrono": 2 },
+          "inces": { "trabajador": 0.5, "patrono": 2 }
+        }
+      },
+      "esperado": {
+        "ivss": { "base": "700.00", "trabajador": "28.00", "patrono": "70.00" },
+        "rpe": { "base": "1400.00", "trabajador": "7.00", "patrono": "28.00" },
+        "faov": { "base": "20250.00", "trabajador": "202.50", "patrono": "405.00" },
+        "inces": { "base": "18000.00", "trabajador": "0.00", "patrono": "360.00" },
+        "totalTrabajador": "237.50",
+        "totalPatrono": "863.00"
+      }
+    }
+  }
+}

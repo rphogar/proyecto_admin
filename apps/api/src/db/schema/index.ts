@@ -72,3 +72,11 @@ export * from './conteos';
 export * from './posting-templates';
 export * from './manual-entry-attachments';
 export * from './cierres-mensuales';
+// P15 — Nómina (docs/04, docs/06): fichas, conceptos con fórmulas seguras, corridas (pre-nómina →
+// aprobación → recibos → asiento), kardex de prestaciones (art. 142, append-only), provisiones
+// mensuales, parafiscales (IVSS/RPE/FAOV/INCES) con planillas y ARI/ARC de retención de ISLR.
+export * from './nomina-trabajadores';
+export * from './nomina-conceptos';
+export * from './nomina-corridas';
+export * from './nomina-prestaciones';
+export * from './nomina-parafiscales';

@@ -1,0 +1,32 @@
+{
+  "_descripcion": "Caso 49 doc 07 §G — Mes con 5 lunes: el IVSS/RPE cotiza 5 semanas. Diciembre 2024 tiene 5 lunes (2,9,16,23,30); febrero 2025 tiene 4 (3,10,17,24). Mismo salario que caso 48 pero con 5 semanas → IVSS y RPE mayores. Verificado a mano.",
+  "semanas": {
+    "diciembre_2024": { "anio": 2024, "mes": 12, "esperado": 5 },
+    "febrero_2025": { "anio": 2025, "mes": 2, "esperado": 4 }
+  },
+  "caso49_cinco_semanas": {
+    "input": {
+      "salarioNormalMensual": "18000.00000000",
+      "salarioIntegralMensual": "20250.00000000",
+      "salarioMinimoMensual": 150,
+      "riesgoIvss": "medio",
+      "semanasCotizables": 5,
+      "utilidadesPagadas": 0,
+      "cincoOMasTrabajadores": true,
+      "alicuotas": {
+        "ivss": { "trabajador": 4, "patronoPorRiesgo": { "minimo": 9, "medio": 10, "maximo": 11 }, "topeSalariosMinimos": 5 },
+        "rpe": { "trabajador": 0.5, "patrono": 2, "topeSalariosMinimos": 10 },
+        "faov": { "trabajador": 1, "patrono": 2 },
+        "inces": { "trabajador": 0.5, "patrono": 2 }
+      }
+    },
+    "esperado": {
+      "ivss": { "base": "875.00", "trabajador": "35.00", "patrono": "87.50" },
+      "rpe": { "base": "1750.00", "trabajador": "8.75", "patrono": "35.00" },
+      "faov": { "base": "20250.00", "trabajador": "202.50", "patrono": "405.00" },
+      "inces": { "base": "18000.00", "trabajador": "0.00", "patrono": "360.00" },
+      "totalTrabajador": "246.25",
+      "totalPatrono": "887.50"
+    }
+  }
+}
