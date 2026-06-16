@@ -80,3 +80,8 @@ export * from './nomina-conceptos';
 export * from './nomina-corridas';
 export * from './nomina-prestaciones';
 export * from './nomina-parafiscales';
+// P16 — Portal del contador (docs/06 M11): delegaciones de permisos por empresa que el dueño
+// concede a su contador (motor del modelo de distribución multi-empresa). El panel, el calendario
+// consolidado de obligaciones y el checklist masivo de cierre se DERIVAN de las tablas existentes
+// (periods, cierres_mensuales, tax_returns, companies): no añaden tablas, solo lectura agregada.
+export * from './delegaciones';

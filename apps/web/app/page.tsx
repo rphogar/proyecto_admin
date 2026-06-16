@@ -32,6 +32,9 @@ export default function Home() {
         <Button variant="outline" asChild>
           <Link href="/nomina/trabajadores">Nómina</Link>
         </Button>
+        <Button variant="outline" asChild>
+          <Link href="/portal">Portal del contador</Link>
+        </Button>
       </div>
     </main>
   );

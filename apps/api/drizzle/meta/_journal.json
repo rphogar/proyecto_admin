@@ -344,6 +344,34 @@
       "when": 1781486700480,
       "tag": "0048_seed_nomina_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1781560204882,
+      "tag": "0049_portal_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1781560284882,
+      "tag": "0050_portal_rls_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1781560364882,
+      "tag": "0051_portal_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1781560444882,
+      "tag": "0052_seed_portal_permissions",
+      "breakpoints": true
     }
   ]
 }

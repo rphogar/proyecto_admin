@@ -11,12 +11,13 @@ import { ImpuestosModule } from './impuestos/impuestos.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { MaestrosModule } from './maestros/maestros.module';
 import { NominaModule } from './nomina/nomina.module';
+import { PortalModule } from './portal/portal.module';
 import { TasasModule } from './tasas/tasas.module';
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
 import { TesoreriaModule } from './tesoreria/tesoreria.module';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule],
+  imports: [DatabaseModule, AuditModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {
