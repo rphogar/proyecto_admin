@@ -372,6 +372,34 @@
       "when": 1781560444882,
       "tag": "0052_seed_portal_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1781656426022,
+      "tag": "0053_cumplimiento_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1781656506022,
+      "tag": "0054_cumplimiento_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1781656586022,
+      "tag": "0055_cumplimiento_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1781656666022,
+      "tag": "0056_seed_cumplimiento_permissions",
+      "breakpoints": true
     }
   ]
 }

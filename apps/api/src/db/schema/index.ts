@@ -85,3 +85,10 @@ export * from './nomina-parafiscales';
 // consolidado de obligaciones y el checklist masivo de cierre se DERIVAN de las tablas existentes
 // (periods, cierres_mensuales, tax_returns, companies): no añaden tablas, solo lectura agregada.
 export * from './delegaciones';
+// P17 — Cumplimiento Providencia SNAT/2024/000121 (docs/02 §6.3, docs/05 §3.9): bitácora fiscal
+// integral encadenada y append-only (fiscal_event_log: emisión/impresión/reimpresión/NC-ND/fallos),
+// cola de remisión al SENIAT desacoplada con reintentos y acuse (fiscal_transmission_queue), y
+// versionado formal del producto para la homologación (product_versions).
+export * from './fiscal-event-log';
+export * from './fiscal-transmission-queue';
+export * from './product-versions';

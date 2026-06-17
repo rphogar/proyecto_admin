@@ -13,6 +13,9 @@ import { seedPlanDeCuentas } from '../ledger/seed-plan-cuentas';
 import { runWithTenantContext, type TenantContext } from '../tenant/tenant-context';
 import { withTenant } from '../tenant/with-tenant';
 import { createTestDatabase, type TestDatabase } from '../../test/pg-container';
+import { FiscalEventLogService } from '../cumplimiento/fiscal-event-log.service';
+import { StubRemisionAdapter } from '../cumplimiento/remision-adapter';
+import { RemisionService } from '../cumplimiento/remision.service';
 import { DeclaracionesService } from './declaraciones.service';
 import { LibrosService } from './libros.service';
 
@@ -63,7 +66,12 @@ describe('Libros y declaraciones — triple igualdad (P10)', () => {
     tdb = await createTestDatabase();
     database = { db: tdb.appDb } as DatabaseService;
     const audit = new AuditService();
-    emision = new EmisionService(database, audit);
+    emision = new EmisionService(
+      database,
+      audit,
+      new FiscalEventLogService(database),
+      new RemisionService(database, new StubRemisionAdapter()),
+    );
     compras = new ComprasService(database, audit);
     recibidas = new RetencionesRecibidasService(database, audit);
     cobros = new CobrosService(database, audit);

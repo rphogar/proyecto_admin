@@ -9,6 +9,9 @@ import { seedPlanDeCuentas } from '../ledger/seed-plan-cuentas';
 import { runWithTenantContext, type TenantContext } from '../tenant/tenant-context';
 import { withTenant } from '../tenant/with-tenant';
 import { createTestDatabase, type TestDatabase } from '../../test/pg-container';
+import { FiscalEventLogService } from '../cumplimiento/fiscal-event-log.service';
+import { StubRemisionAdapter } from '../cumplimiento/remision-adapter';
+import { RemisionService } from '../cumplimiento/remision.service';
 import { EmisionService } from './emision.service';
 
 /**
@@ -76,7 +79,12 @@ describe('Emisión de documentos — integración DB (P6)', () => {
   beforeAll(async () => {
     tdb = await createTestDatabase();
     database = { db: tdb.appDb } as DatabaseService;
-    emision = new EmisionService(database, new AuditService());
+    emision = new EmisionService(
+      database,
+      new AuditService(),
+      new FiscalEventLogService(database),
+      new RemisionService(database, new StubRemisionAdapter()),
+    );
 
     await tdb.ownerSql`insert into tenants (id, nombre, slug) values
       (${tenantA}, 'Tenant A', 'tenant-a'), (${tenantB}, 'Tenant B', 'tenant-b')`;
@@ -154,7 +162,12 @@ describe('Emisión de documentos — integración DB (P6)', () => {
       // Auditoría que revienta DESPUÉS de número+documento+asiento: simula la caída a mitad.
       const auditFalla = new AuditService();
       vi.spyOn(auditFalla, 'registrar').mockRejectedValue(new Error('corte de luz simulado'));
-      const emisionFalla = new EmisionService(database, auditFalla);
+      const emisionFalla = new EmisionService(
+        database,
+        auditFalla,
+        new FiscalEventLogService(database),
+        new RemisionService(database, new StubRemisionAdapter()),
+      );
 
       await expect(como(tenantA, () => emisionFalla.emitir(facturaBody(serie)))).rejects.toThrow(/corte de luz/i);
 

@@ -10,6 +10,9 @@ import { seedPlanDeCuentas } from '../ledger/seed-plan-cuentas';
 import { runWithTenantContext, type TenantContext } from '../tenant/tenant-context';
 import { withTenant } from '../tenant/with-tenant';
 import { createTestDatabase, type TestDatabase } from '../../test/pg-container';
+import { FiscalEventLogService } from '../cumplimiento/fiscal-event-log.service';
+import { StubRemisionAdapter } from '../cumplimiento/remision-adapter';
+import { RemisionService } from '../cumplimiento/remision.service';
 import { CobrosService } from './cobros.service';
 
 /**
@@ -72,7 +75,12 @@ describe('Cobros — integración DB (P8)', () => {
   beforeAll(async () => {
     tdb = await createTestDatabase();
     const database = { db: tdb.appDb } as DatabaseService;
-    emision = new EmisionService(database, new AuditService());
+    emision = new EmisionService(
+      database,
+      new AuditService(),
+      new FiscalEventLogService(database),
+      new RemisionService(database, new StubRemisionAdapter()),
+    );
     cobrosSvc = new CobrosService(database, new AuditService());
 
     await tdb.ownerSql`insert into tenants (id, nombre, slug) values

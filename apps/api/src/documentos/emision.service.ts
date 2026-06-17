@@ -11,6 +11,8 @@ import { Asiento, postear } from '@contave/ledger';
 import { Decimal, fechaFiscal, periodoFiscal } from '@contave/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
+import { FiscalEventLogService, type TipoEventoFiscal } from '../cumplimiento/fiscal-event-log.service';
+import { RemisionService } from '../cumplimiento/remision.service';
 import { DatabaseService, type DatabaseTx } from '../db/database.service';
 import {
   accounts,
@@ -173,6 +175,8 @@ export class EmisionService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly fiscalEventLog: FiscalEventLogService,
+    private readonly remision: RemisionService,
   ) {}
 
   async emitir(body: unknown): Promise<DocumentoEmitido> {
@@ -379,6 +383,45 @@ export class EmisionService {
         after: documento,
       });
 
+      // 8) Cumplimiento Providencia 121 (P17), todo en la MISMA transacción de emisión:
+      //    (a) evento fiscal encadenado en la bitácora (req. 1 y 3); (b) encola la remisión al SENIAT
+      //    (req. 2: automática e inmediata). Si algo falla aquí, la emisión completa revierte.
+      const eventoFiscal = await this.fiscalEventLog.registrar(tx, {
+        companyId: e.companyId,
+        documentId: docId,
+        eventType: tipoEvento(e.tipo),
+        tipoDocumento: e.tipo,
+        documentNumber: `${serie.prefijo}${numero}`,
+        controlNumber: e.numeroControl,
+        hashDocumento: hash,
+        payload: {
+          tipo: e.tipo,
+          serie: serie.prefijo,
+          numero,
+          moneda: e.moneda,
+          totalVes: calc.totales.totalVes,
+          totalOrigen: calc.totales.totalOrigen,
+          partyRif,
+          issueFechaFiscal,
+        },
+      });
+      await this.remision.encolar(tx, {
+        companyId: e.companyId,
+        documentId: docId,
+        fiscalEventId: eventoFiscal.id,
+        payload: {
+          documentId: docId,
+          tipo: e.tipo,
+          serie: serie.prefijo,
+          numero,
+          controlNumber: e.numeroControl,
+          hashIntegridad: hash,
+          eventHash: eventoFiscal.eventHash,
+          totalVes: calc.totales.totalVes,
+          issueFechaFiscal,
+        },
+      });
+
       return { documento, lineas, impuestos };
     });
   }
@@ -444,6 +487,13 @@ function nombreTipo(tipo: TipoDocumento): string {
   if (tipo === 'NOTA_CREDITO') return 'Nota de crédito';
   if (tipo === 'NOTA_DEBITO') return 'Nota de débito';
   return 'Factura';
+}
+
+/** Tipo de evento fiscal (bitácora P17) según el tipo de documento emitido. */
+function tipoEvento(tipo: TipoDocumento): TipoEventoFiscal {
+  if (tipo === 'NOTA_CREDITO') return 'NOTA_CREDITO';
+  if (tipo === 'NOTA_DEBITO') return 'NOTA_DEBITO';
+  return 'EMISION';
 }
 
 /** Carga la factura afectada por una NC/ND (debe estar emitida y pertenecer a la empresa). */
