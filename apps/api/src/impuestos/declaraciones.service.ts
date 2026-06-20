@@ -67,11 +67,13 @@ export class DeclaracionesService {
 
     // Para la prorrata: las exportaciones (0%) dan derecho a crédito → cuentan como gravadas.
     const ventasGravadas = new Decimal(ventas.resumen.baseGravada).plus(ventas.resumen.baseExportacion).toFixed(2);
+    // Exentas y exoneradas (ambas sin derecho a crédito) cuentan como no gravadas en la prorrata.
+    const ventasExentas = new Decimal(ventas.resumen.baseExenta).plus(ventas.resumen.baseExonerada).toFixed(2);
     const planilla = calcularPlanillaIva({
       debito: ventas.resumen.grupos.map((g) => ({ alicuotaTasa: g.alicuotaTasa, base: g.base, monto: g.monto })),
       credito: compras.resumen.grupos.map((g) => ({ alicuotaTasa: g.alicuotaTasa, base: g.base, monto: g.monto })),
       ventasGravadas,
-      ventasExentas: ventas.resumen.baseExenta,
+      ventasExentas,
       retencionesDelPeriodo: retenciones,
       excedenteCreditoAnterior: excedentes.credito,
       excedenteRetencionesAnterior: excedentes.retenciones,

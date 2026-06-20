@@ -45,6 +45,8 @@ import {
 import { parseLineas } from './dto';
 
 const TIPOS_DOC_PROVEEDOR = ['FACTURA', 'NOTA_DEBITO', 'NOTA_CREDITO'] as const;
+/** Tipo de operación de una compra (exportación no aplica a compras). */
+const TIPOS_OPERACION_COMPRA = ['INTERNA', 'IMPORTACION'] as const;
 /** Mapa tipo de documento del proveedor → código de tipo en el TXT del portal. */
 const TIPO_DOC_TXT: Record<(typeof TIPOS_DOC_PROVEEDOR)[number], TipoDocumentoTxt> = {
   FACTURA: '01',
@@ -60,6 +62,8 @@ export interface EntradaCompra {
   numeroDocumento: string;
   numeroControl: string;
   numeroDocumentoAfectado: string | null;
+  /** Tipo de operación del Libro de Compras: INTERNA | IMPORTACION (Reglamento IVA arts. 70–78). */
+  tipoOperacion: (typeof TIPOS_OPERACION_COMPRA)[number];
   cuentaDestino: string;
   fechaDocumento: Date;
   moneda: string;
@@ -98,6 +102,7 @@ function parseCompra(body: unknown): EntradaCompra {
     numeroDocumento: requireString(b.numeroDocumento, 'numeroDocumento', 40),
     numeroControl: requireString(b.numeroControl, 'numeroControl', 40),
     numeroDocumentoAfectado: optionalString(b.numeroDocumentoAfectado, 'numeroDocumentoAfectado', 40),
+    tipoOperacion: requireEnumOpt(b.tipoOperacion, 'tipoOperacion', TIPOS_OPERACION_COMPRA, 'INTERNA'),
     cuentaDestino: optionalString(b.cuentaDestino, 'cuentaDestino', 20) ?? '5.2',
     fechaDocumento,
     moneda,
@@ -248,6 +253,7 @@ export class ComprasService {
           numeroDocumento: e.numeroDocumento,
           numeroControl: e.numeroControl,
           numeroDocumentoAfectado: e.numeroDocumentoAfectado,
+          tipoOperacion: e.tipoOperacion,
           cuentaDestino: e.cuentaDestino,
           fechaDocumento: e.fechaDocumento,
           fechaFiscal: fFiscal,

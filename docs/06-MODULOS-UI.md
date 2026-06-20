@@ -66,7 +66,7 @@ Convenciones globales de UI: navegación lateral por módulos; barra superior co
 
 - **IVA**: planilla borrador 99030 auto-llenada (débitos por alícuota, créditos, prorrata, retenciones soportadas aplicadas, excedentes), cuadre automático contra libros (si difiere: lista de causas), botón `Marcar como presentada` (snapshot inmutable + adjuntar certificado).
 - **Retenciones IVA como agente**: lote del período, comprobantes PDF, **archivo TXT formato SENIAT** para carga en el portal, control de enteración.
-- **Libros**: generación exacta según Reglamento (ver doc 02 §7.2), PDF legal + Excel, advertencia de huecos de correlativo.
+- **Libros**: generación exacta según Reglamento (ver doc 02 §7.2) con sus columnas literales —tipo de operación (interna/importación/exportación), base e IVA por alícuota, exentas y exoneradas en columnas separadas, exportación, y nº del comprobante de retención—, PDF legal + Excel, advertencia de huecos de correlativo.
 - **IGTF**: percibido por período, declaración borrador, detalle por documento/pago.
 - **Calendario**: obligaciones generadas por perfil (ordinario/SPE con su calendario por RIF), semáforo, recordatorios por correo/WhatsApp, marca de cumplimiento con soporte adjunto.
 

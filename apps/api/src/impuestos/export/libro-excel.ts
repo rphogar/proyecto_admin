@@ -13,22 +13,28 @@ import { etiquetaPeriodo } from '../periodo';
 const COLUMNAS = [
   'Fecha',
   'Tipo',
+  'Tipo operación',
   'RIF',
   'Nombre o razón social',
   'Nº documento',
   'Nº control',
   'Nº doc. afectado',
+  'Nº comprob. retención',
   'Base 16%',
   'IVA 16%',
   'Base 8%',
   'IVA 8%',
   'Base 31%',
   'IVA 31%',
-  'Exento/Exonerado',
+  'Exento',
+  'Exonerado',
   'Exportación (0%)',
   'Total con IVA',
   'IVA retenido',
 ] as const;
+
+/** Nº de columnas de texto antes de las numéricas (alinea la fila de TOTALES). */
+const COLS_TEXTO = 9;
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -49,11 +55,13 @@ function fila(f: LibroFila): string {
     '<Row>' +
     celdaTexto(f.fecha) +
     celdaTexto(f.tipoDocumento) +
+    celdaTexto(f.tipoOperacion) +
     celdaTexto(f.rif) +
     celdaTexto(f.nombre) +
     celdaTexto(f.numero) +
     celdaTexto(f.numeroControl) +
     celdaTexto(f.numeroDocAfectado) +
+    celdaTexto(f.numeroComprobanteRetencion) +
     celdaNum(f.baseGeneral, s) +
     celdaNum(f.ivaGeneral, s) +
     celdaNum(f.baseReducida, s) +
@@ -61,6 +69,7 @@ function fila(f: LibroFila): string {
     celdaNum(f.baseAdicional, s) +
     celdaNum(f.ivaAdicional, s) +
     celdaNum(f.baseExenta, s) +
+    celdaNum(f.baseExonerada, s) +
     celdaNum(f.baseExportacion, s) +
     celdaNum(f.totalConIva, s) +
     celdaNum(f.ivaRetenido, s) +
@@ -78,15 +87,10 @@ function filaTotales(libro: Libro): string {
   const red = grupo('REDUCIDA');
   const adi = grupo('ADICIONAL');
   const ivaRetenido = libro.filas.reduce((acc, f) => acc.plus(new Decimal(f.ivaRetenido).times(f.factor)), new Decimal(0)).toFixed(2);
+  const textoTotales = celdaTexto('TOTALES') + celdaTexto('').repeat(COLS_TEXTO - 1);
   return (
     '<Row>' +
-    celdaTexto('TOTALES') +
-    celdaTexto('') +
-    celdaTexto('') +
-    celdaTexto('') +
-    celdaTexto('') +
-    celdaTexto('') +
-    celdaTexto('') +
+    textoTotales +
     celdaNum(gen.base) +
     celdaNum(gen.monto) +
     celdaNum(red.base) +
@@ -94,6 +98,7 @@ function filaTotales(libro: Libro): string {
     celdaNum(adi.base) +
     celdaNum(adi.monto) +
     celdaNum(r.baseExenta) +
+    celdaNum(r.baseExonerada) +
     celdaNum(r.baseExportacion) +
     celdaNum(r.totalConIva) +
     celdaNum(ivaRetenido) +

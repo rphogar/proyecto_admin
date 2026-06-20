@@ -9,6 +9,7 @@ import {
   documents,
   purchaseTaxes,
   purchases,
+  retentionsIssued,
   retentionsReceived,
 } from '../db/schema';
 import { asegurarEmpresaDelTenant } from '../maestros/companias';
@@ -31,18 +32,25 @@ export interface LibroFila {
   readonly tipoDocumento: string;
   /** +1 factura/ND, −1 nota de crédito (signo fiscal del renglón). */
   readonly factor: 1 | -1;
+  /** Tipo de operación del Reglamento (arts. 70–78): INTERNA | IMPORTACION | EXPORTACION. */
+  readonly tipoOperacion: 'INTERNA' | 'IMPORTACION' | 'EXPORTACION';
   readonly rif: string | null;
   readonly nombre: string | null;
   readonly numero: string | null;
   readonly numeroControl: string | null;
   readonly numeroDocAfectado: string | null;
+  /** Nº del comprobante de retención de IVA (en ventas: el del cliente agente; en compras: el nuestro). */
+  readonly numeroComprobanteRetencion: string | null;
   readonly baseGeneral: string;
   readonly ivaGeneral: string;
   readonly baseReducida: string;
   readonly ivaReducida: string;
   readonly baseAdicional: string;
   readonly ivaAdicional: string;
+  /** Base exenta (por ley). */
   readonly baseExenta: string;
+  /** Base exonerada (por decreto). Columna separada del Reglamento. */
+  readonly baseExonerada: string;
   readonly baseExportacion: string;
   readonly totalConIva: string;
   /** IVA retenido (en ventas: por el cliente agente; en compras: por nosotros como agente). */
@@ -112,9 +120,25 @@ export class LibrosService {
         const factor: 1 | -1 = d.type === 'NOTA_CREDITO' ? -1 : 1;
         const dtaxes = taxesPorDoc.get(d.id) ?? [];
         const afectado = await numeroDocAfectado(tx, d.affectedDocumentId);
-        const ivaRetenido = (retPorDoc.get(d.id) ?? []).reduce((s, r) => s.plus(r.montoVes), new Decimal(0));
+        const retDoc = retPorDoc.get(d.id) ?? [];
+        const ivaRetenido = retDoc.reduce((s, r) => s.plus(r.montoVes), new Decimal(0));
+        // Exportación se deriva de la alícuota (no hay importación en ventas).
+        const tipoOperacion = dtaxes.some((t) => t.alicuotaCodigo === 'EXPORTACION') ? 'EXPORTACION' : 'INTERNA';
         filas.push(
-          armarFila(d.issueFechaFiscal, d.type, factor, d.partyRif, d.partyNombre, numeroVisible(d.number), d.controlNumber, afectado, dtaxes, ivaRetenido),
+          armarFila({
+            fecha: d.issueFechaFiscal,
+            tipoDocumento: d.type,
+            factor,
+            tipoOperacion,
+            rif: d.partyRif,
+            nombre: d.partyNombre,
+            numero: numeroVisible(d.number),
+            numeroControl: d.controlNumber,
+            numeroDocAfectado: afectado,
+            numeroComprobanteRetencion: unirComprobantes(retDoc.map((r) => r.numeroComprobante)),
+            taxes: dtaxes,
+            ivaRetenido,
+          }),
         );
         for (const t of dtaxes) filasResumen.push(aFilaResumen(t, factor));
       }
@@ -154,6 +178,15 @@ export class LibrosService {
       const taxes = compras.length === 0 ? [] : await tx.select().from(purchaseTaxes).where(inArray(purchaseTaxes.purchaseId, compras.map((c) => c.id)));
       const taxesPorCompra = agrupar(taxes, (t) => t.purchaseId);
 
+      // Comprobantes de retención de IVA que NOSOTROS emitimos sobre estas compras (como agente).
+      const comprobantes = compras.length === 0
+        ? []
+        : await tx
+            .select()
+            .from(retentionsIssued)
+            .where(and(eq(retentionsIssued.tipo, 'IVA'), inArray(retentionsIssued.purchaseId, compras.map((c) => c.id))));
+      const compPorCompra = agrupar(comprobantes, (r) => r.purchaseId);
+
       const filas: LibroFila[] = [];
       const filasResumen: FilaImpuestoLibro[] = [];
       for (const c of compras) {
@@ -162,7 +195,20 @@ export class LibrosService {
         // En compras el IVA retenido es el que NOSOTROS practicamos como agente (informativo en la compra).
         const ivaRetenido = new Decimal(c.retencionIvaVes ?? '0');
         filas.push(
-          armarFila(c.fechaFiscal, c.tipoDocumento, factor, c.proveedorRif, c.proveedorNombre, c.numeroDocumento, c.numeroControl, c.numeroDocumentoAfectado, ctaxes, ivaRetenido),
+          armarFila({
+            fecha: c.fechaFiscal,
+            tipoDocumento: c.tipoDocumento,
+            factor,
+            tipoOperacion: c.tipoOperacion as LibroFila['tipoOperacion'],
+            rif: c.proveedorRif,
+            nombre: c.proveedorNombre,
+            numero: c.numeroDocumento,
+            numeroControl: c.numeroControl,
+            numeroDocAfectado: c.numeroDocumentoAfectado,
+            numeroComprobanteRetencion: unirComprobantes((compPorCompra.get(c.id) ?? []).map((r) => r.numeroComprobante)),
+            taxes: ctaxes,
+            ivaRetenido,
+          }),
         );
         for (const t of ctaxes) filasResumen.push(aFilaResumen(t, factor));
       }
@@ -199,18 +245,22 @@ function aFilaResumen(t: TaxRow, factor: 1 | -1): FilaImpuestoLibro {
   };
 }
 
-function armarFila(
-  fecha: string,
-  tipoDocumento: string,
-  factor: 1 | -1,
-  rif: string | null,
-  nombre: string | null,
-  numero: string | null,
-  numeroControl: string | null,
-  numeroDocAfectado: string | null,
-  taxes: TaxRow[],
-  ivaRetenido: Decimal,
-): LibroFila {
+interface DatosFila {
+  readonly fecha: string;
+  readonly tipoDocumento: string;
+  readonly factor: 1 | -1;
+  readonly tipoOperacion: 'INTERNA' | 'IMPORTACION' | 'EXPORTACION';
+  readonly rif: string | null;
+  readonly nombre: string | null;
+  readonly numero: string | null;
+  readonly numeroControl: string | null;
+  readonly numeroDocAfectado: string | null;
+  readonly numeroComprobanteRetencion: string | null;
+  readonly taxes: TaxRow[];
+  readonly ivaRetenido: Decimal;
+}
+
+function armarFila(d: DatosFila): LibroFila {
   const col = {
     baseGeneral: new Decimal(0),
     ivaGeneral: new Decimal(0),
@@ -219,9 +269,10 @@ function armarFila(
     baseAdicional: new Decimal(0),
     ivaAdicional: new Decimal(0),
     baseExenta: new Decimal(0),
+    baseExonerada: new Decimal(0),
     baseExportacion: new Decimal(0),
   };
-  for (const t of taxes) {
+  for (const t of d.taxes) {
     const base = new Decimal(t.baseVes);
     const iva = new Decimal(t.montoVes);
     switch (t.alicuotaCodigo) {
@@ -240,21 +291,31 @@ function armarFila(
       case 'EXPORTACION':
         col.baseExportacion = col.baseExportacion.plus(base);
         break;
-      default: // EXENTO / EXONERADO
+      case 'EXONERADO':
+        col.baseExonerada = col.baseExonerada.plus(base);
+        break;
+      default: // EXENTO
         col.baseExenta = col.baseExenta.plus(base);
     }
   }
-  const totalBases = col.baseGeneral.plus(col.baseReducida).plus(col.baseAdicional).plus(col.baseExenta).plus(col.baseExportacion);
+  const totalBases = col.baseGeneral
+    .plus(col.baseReducida)
+    .plus(col.baseAdicional)
+    .plus(col.baseExenta)
+    .plus(col.baseExonerada)
+    .plus(col.baseExportacion);
   const totalIva = col.ivaGeneral.plus(col.ivaReducida).plus(col.ivaAdicional);
   return {
-    fecha,
-    tipoDocumento,
-    factor,
-    rif,
-    nombre,
-    numero,
-    numeroControl,
-    numeroDocAfectado,
+    fecha: d.fecha,
+    tipoDocumento: d.tipoDocumento,
+    factor: d.factor,
+    tipoOperacion: d.tipoOperacion,
+    rif: d.rif,
+    nombre: d.nombre,
+    numero: d.numero,
+    numeroControl: d.numeroControl,
+    numeroDocAfectado: d.numeroDocAfectado,
+    numeroComprobanteRetencion: d.numeroComprobanteRetencion,
     baseGeneral: f2(col.baseGeneral),
     ivaGeneral: f2(col.ivaGeneral),
     baseReducida: f2(col.baseReducida),
@@ -262,10 +323,17 @@ function armarFila(
     baseAdicional: f2(col.baseAdicional),
     ivaAdicional: f2(col.ivaAdicional),
     baseExenta: f2(col.baseExenta),
+    baseExonerada: f2(col.baseExonerada),
     baseExportacion: f2(col.baseExportacion),
     totalConIva: f2(totalBases.plus(totalIva)),
-    ivaRetenido: f2(ivaRetenido),
+    ivaRetenido: f2(d.ivaRetenido),
   };
+}
+
+/** Une los números de comprobante de un conjunto de retenciones (varias por documento → coma). */
+function unirComprobantes(numeros: ReadonlyArray<string>): string | null {
+  const limpios = [...new Set(numeros.filter((n) => n != null && n !== ''))];
+  return limpios.length === 0 ? null : limpios.join(', ');
 }
 
 function f2(d: Decimal): string {

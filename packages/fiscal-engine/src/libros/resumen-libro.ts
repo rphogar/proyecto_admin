@@ -54,11 +54,13 @@ export interface ResumenLibro {
   readonly baseGravada: string;
   /** Σ IVA (débito fiscal en ventas / crédito fiscal en compras). */
   readonly ivaTotal: string;
-  /** Σ bases exentas + exoneradas + no sujetas. */
+  /** Σ bases exentas (por ley). Columna separada del Reglamento (arts. 70–78). */
   readonly baseExenta: string;
+  /** Σ bases exoneradas (por decreto). Columna separada del Reglamento (arts. 70–78). */
+  readonly baseExonerada: string;
   /** Σ bases de exportación (0% con derecho a recuperación). */
   readonly baseExportacion: string;
-  /** Σ de TODAS las bases (gravadas + exentas + exportación). */
+  /** Σ de TODAS las bases (gravadas + exentas + exoneradas + exportación). */
   readonly baseTotal: string;
   /** Total con IVA = baseTotal + ivaTotal. */
   readonly totalConIva: string;
@@ -96,6 +98,7 @@ export function resumirLibro(filas: ReadonlyArray<FilaImpuestoLibro>, opciones: 
 
   const acum = new Map<string, { codigo: AlicuotaCodigo; tasa: Decimal; base: Decimal; monto: Decimal }>();
   let baseExenta = new Decimal(0);
+  let baseExonerada = new Decimal(0);
   let baseExportacion = new Decimal(0);
 
   filas.forEach((f, i) => {
@@ -109,6 +112,7 @@ export function resumirLibro(filas: ReadonlyArray<FilaImpuestoLibro>, opciones: 
 
     if (SIN_IVA.has(f.alicuotaCodigo)) {
       if (f.alicuotaCodigo === 'EXPORTACION') baseExportacion = baseExportacion.plus(base);
+      else if (f.alicuotaCodigo === 'EXONERADO') baseExonerada = baseExonerada.plus(base);
       else baseExenta = baseExenta.plus(base);
       return;
     }
@@ -134,8 +138,9 @@ export function resumirLibro(filas: ReadonlyArray<FilaImpuestoLibro>, opciones: 
   const baseGravada = grupos.reduce((s, g) => s.plus(g.base), new Decimal(0));
   const ivaTotal = grupos.reduce((s, g) => s.plus(g.monto), new Decimal(0));
   const exenta = redondear(baseExenta, decimales);
+  const exonerada = redondear(baseExonerada, decimales);
   const exportacion = redondear(baseExportacion, decimales);
-  const baseTotal = baseGravada.plus(exenta).plus(exportacion);
+  const baseTotal = baseGravada.plus(exenta).plus(exonerada).plus(exportacion);
   const totalConIva = baseTotal.plus(ivaTotal);
 
   return {
@@ -143,6 +148,7 @@ export function resumirLibro(filas: ReadonlyArray<FilaImpuestoLibro>, opciones: 
     baseGravada: baseGravada.toFixed(decimales),
     ivaTotal: ivaTotal.toFixed(decimales),
     baseExenta: exenta.toFixed(decimales),
+    baseExonerada: exonerada.toFixed(decimales),
     baseExportacion: exportacion.toFixed(decimales),
     baseTotal: baseTotal.toFixed(decimales),
     totalConIva: totalConIva.toFixed(decimales),

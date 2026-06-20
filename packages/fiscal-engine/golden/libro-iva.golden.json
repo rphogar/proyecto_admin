@@ -22,6 +22,7 @@
       "baseGravada": "16000.00",
       "ivaTotal": "2400.00",
       "baseExenta": "1000.00",
+      "baseExonerada": "0.00",
       "baseExportacion": "3000.00",
       "baseTotal": "20000.00",
       "totalConIva": "22400.00"
@@ -34,6 +35,7 @@
       "baseGravada": "9000.00",
       "ivaTotal": "1360.00",
       "baseExenta": "0.00",
+      "baseExonerada": "0.00",
       "baseExportacion": "0.00",
       "baseTotal": "9000.00",
       "totalConIva": "10360.00"

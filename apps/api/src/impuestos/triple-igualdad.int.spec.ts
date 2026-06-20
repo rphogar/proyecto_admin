@@ -17,6 +17,8 @@ import { FiscalEventLogService } from '../cumplimiento/fiscal-event-log.service'
 import { StubRemisionAdapter } from '../cumplimiento/remision-adapter';
 import { RemisionService } from '../cumplimiento/remision.service';
 import { DeclaracionesService } from './declaraciones.service';
+import { generarLibroExcel } from './export/libro-excel';
+import { generarLibroPdf } from './export/libro-pdf';
 import { LibrosService } from './libros.service';
 
 /**
@@ -153,7 +155,41 @@ describe('Libros y declaraciones — triple igualdad (P10)', () => {
       } as Record<string, unknown>),
     );
 
-    // Compra C1: GENERAL 16% (8.000) → crédito fiscal 1.280; SPE retiene 75%.
+    // F3: ADICIONAL 31% (1.000 → IVA 310) + EXONERADO (500). Operación interna.
+    await como(tenantA, async () =>
+      emision.emitir({
+        companyId: companyA,
+        seriesId: await serie('FACTURA'),
+        tipo: 'FACTURA',
+        moneda: 'VES',
+        rateUsdMgmt: '40',
+        paymentCondition: 'CONTADO',
+        issueDate: fF,
+        numeroControl: '00-00000004',
+        partyId: clienteVes,
+        lineas: [
+          { descripcion: 'Bien suntuario', cantidad: '1', precioUnitarioOrigen: '1000', alicuotaCodigo: 'ADICIONAL', alicuotaTasa: '31' },
+          { descripcion: 'Bien exonerado', cantidad: '1', precioUnitarioOrigen: '500', alicuotaCodigo: 'EXONERADO', alicuotaTasa: '0' },
+        ],
+      } as Record<string, unknown>),
+    );
+    // F4: EXPORTACION 0% (2.000) → operación de exportación (derivada de la alícuota).
+    await como(tenantA, async () =>
+      emision.emitir({
+        companyId: companyA,
+        seriesId: await serie('FACTURA'),
+        tipo: 'FACTURA',
+        moneda: 'VES',
+        rateUsdMgmt: '40',
+        paymentCondition: 'CONTADO',
+        issueDate: fF,
+        numeroControl: '00-00000005',
+        partyId: clienteUsd,
+        lineas: [{ descripcion: 'Exportación de bienes', cantidad: '1', precioUnitarioOrigen: '2000', alicuotaCodigo: 'EXPORTACION', alicuotaTasa: '0' }],
+      } as Record<string, unknown>),
+    );
+
+    // Compra C1: GENERAL 16% (8.000) → crédito fiscal 1.280; SPE retiene 75%. Operación interna.
     await como(tenantA, () =>
       compras.registrar({
         companyId: companyA,
@@ -164,6 +200,21 @@ describe('Libros y declaraciones — triple igualdad (P10)', () => {
         rateUsdMgmt: '40',
         fechaDocumento: fF,
         lineas: [{ descripcion: 'Insumos', cantidad: '1', precioUnitarioOrigen: '8000', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+      }),
+    );
+
+    // Compra C2: IMPORTACION GENERAL 16% (3.000 → crédito 480), con comprobante de retención emitido.
+    await como(tenantA, () =>
+      compras.registrar({
+        companyId: companyA,
+        partyId: proveedor,
+        tipoOperacion: 'IMPORTACION',
+        numeroDocumento: 'F-IMP-002',
+        numeroControl: '11-0002',
+        moneda: 'VES',
+        rateUsdMgmt: '40',
+        fechaDocumento: fF,
+        lineas: [{ descripcion: 'Mercancía importada', cantidad: '1', precioUnitarioOrigen: '3000', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
       }),
     );
 
@@ -216,17 +267,25 @@ describe('Libros y declaraciones — triple igualdad (P10)', () => {
     await tdb.stop();
   });
 
-  it('Libro de Ventas de junio: neto por alícuota con la NC restada', async () => {
+  it('Libro de Ventas de junio: neto por alícuota (todas), con la NC restada y columnas exactas', async () => {
     const lv = await como(tenantA, () => libros.libroVentas(companyA, 2026, 6));
+    // Grupos ordenados por tasa desc: ADICIONAL 31, GENERAL 16, REDUCIDA 8.
     expect(lv.resumen.grupos).toEqual([
+      { alicuotaCodigo: 'ADICIONAL', alicuotaTasa: '31', base: '1000.00', monto: '310.00' },
       { alicuotaCodigo: 'GENERAL', alicuotaTasa: '16', base: '14000.00', monto: '2240.00' },
       { alicuotaCodigo: 'REDUCIDA', alicuotaTasa: '8', base: '2000.00', monto: '160.00' },
     ]);
-    expect(lv.resumen.ivaTotal).toBe('2400.00');
+    expect(lv.resumen.ivaTotal).toBe('2710.00');
+    // Exentas y exoneradas SEPARADAS (Reglamento arts. 70–78); exportación aparte.
     expect(lv.resumen.baseExenta).toBe('1000.00');
-    expect(lv.resumen.totalConIva).toBe('19400.00');
+    expect(lv.resumen.baseExonerada).toBe('500.00');
+    expect(lv.resumen.baseExportacion).toBe('2000.00');
+    expect(lv.resumen.totalConIva).toBe('23210.00');
     // La NC aparece como renglón con factor −1.
     expect(lv.filas.some((f) => f.tipoDocumento === 'NOTA_CREDITO' && f.factor === -1)).toBe(true);
+    // Columna tipo de operación: la factura de exportación se marca EXPORTACION (derivada).
+    expect(lv.filas.some((f) => f.tipoOperacion === 'EXPORTACION')).toBe(true);
+    expect(lv.filas.every((f) => f.tipoOperacion !== 'IMPORTACION')).toBe(true); // no hay importación en ventas
   });
 
   it('TRIPLE IGUALDAD: Libro de Ventas ≡ documentos persistidos ≡ planilla de IVA', async () => {
@@ -241,22 +300,46 @@ describe('Libros y declaraciones — triple igualdad (P10)', () => {
         and d.status in ('ISSUED','APPLIED')
         and d.issue_fecha_fiscal >= '2026-06-01' and d.issue_fecha_fiscal < '2026-07-01'`;
 
-    expect(new Decimal(doc!.iva).toFixed(2)).toBe('2400.00'); // documentos
-    expect(lv.resumen.ivaTotal).toBe('2400.00'); // libro
-    expect(planilla.planilla.debitoFiscal).toBe('2400.00'); // planilla
+    expect(new Decimal(doc!.iva).toFixed(2)).toBe('2710.00'); // documentos
+    expect(lv.resumen.ivaTotal).toBe('2710.00'); // libro
+    expect(planilla.planilla.debitoFiscal).toBe('2710.00'); // planilla
     // Y los tres coinciden entre sí (cuadre del módulo de impuestos).
     expect(planilla.planilla.debitoFiscal).toBe(lv.resumen.ivaTotal);
     expect(planilla.cuadre.debitoCuadra).toBe(true);
     expect(planilla.cuadre.creditoCuadra).toBe(true);
   });
 
-  it('planilla IVA: crédito = Libro de Compras y retenciones soportadas aplicadas', async () => {
+  it('planilla IVA: crédito = Libro de Compras (interna + importación) y retenciones soportadas', async () => {
     const lc = await como(tenantA, () => libros.libroCompras(companyA, 2026, 6));
     const planilla = await como(tenantA, () => declaraciones.planillaIva(companyA, 2026, 6));
-    expect(lc.resumen.ivaTotal).toBe('1280.00');
-    expect(planilla.planilla.creditoFiscalDelPeriodo).toBe('1280.00');
+    expect(lc.resumen.ivaTotal).toBe('1760.00'); // C1 1.280 + C2 importación 480
+    expect(planilla.planilla.creditoFiscalDelPeriodo).toBe('1760.00');
     expect(planilla.retencionesSoportadas).toBe('300.00');
     expect(planilla.planilla.retencionesDelPeriodo).toBe('300.00');
+    // Columna tipo de operación: la compra de importación se marca IMPORTACION.
+    expect(lc.filas.some((f) => f.tipoOperacion === 'IMPORTACION')).toBe(true);
+    // Columna Nº de comprobante de retención: las compras con retención propia la exponen.
+    expect(lc.filas.some((f) => f.numeroComprobanteRetencion !== null && /^\d{14}$/.test(f.numeroComprobanteRetencion))).toBe(true);
+  });
+
+  it('export del Libro de Ventas (Excel/PDF) reconcilia con el resumen — cero diferencias', async () => {
+    const lv = await como(tenantA, () => libros.libroVentas(companyA, 2026, 6));
+    const excel = generarLibroExcel(lv);
+    const xml = excel.buffer.toString('utf8');
+    // La fila de TOTALES del Excel lleva el total con IVA y el IVA por alícuota del resumen,
+    // con las columnas exactas (exonerada y exportación separadas).
+    expect(xml).toContain('>23210.00<'); // totalConIva
+    expect(xml).toContain('>310.00<'); // IVA ADICIONAL
+    expect(xml).toContain('>2240.00<'); // IVA GENERAL
+    expect(xml).toContain('>500.00<'); // base exonerada (columna separada)
+    expect(xml).toContain('>2000.00<'); // base exportación
+    expect(xml).toContain('Tipo operación');
+    expect(xml).toContain('Nº comprob. retención');
+    expect(excel.filename).toBe('libro-ventas-2026-06.xls');
+
+    const pdf = await generarLibroPdf(lv);
+    expect(pdf.buffer.length).toBeGreaterThan(1000); // PDF legal imprimible renderizado
+    expect(pdf.filename).toBe('libro-ventas-2026-06.pdf');
   });
 
   it('declaración de IGTF (julio) cuadra con los cobros del período', async () => {
@@ -276,7 +359,7 @@ describe('Libros y declaraciones — triple igualdad (P10)', () => {
     expect(presentada.status).toBe('PRESENTADA');
     expect(presentada.hashIntegridad).toMatch(/^[0-9a-f]{64}$/);
     const snap = presentada.snapshot as { planilla: { debitoFiscal: string } };
-    expect(snap.planilla.debitoFiscal).toBe('2400.00');
+    expect(snap.planilla.debitoFiscal).toBe('2710.00');
 
     // Inmutabilidad: ni la app ni un UPDATE directo pueden modificar lo presentado.
     await expect(

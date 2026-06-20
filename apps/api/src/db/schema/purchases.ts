@@ -51,6 +51,11 @@ export const purchases = pgTable(
     numeroControl: text('numero_control').notNull(),
     /** Documento afectado (para NC/ND del proveedor): número de la factura original. */
     numeroDocumentoAfectado: text('numero_documento_afectado'),
+    /**
+     * Tipo de operación para el Libro de Compras (Reglamento IVA arts. 70–78): INTERNA |
+     * IMPORTACION (CHECK en 0058). La exportación no aplica a compras. Default INTERNA.
+     */
+    tipoOperacion: text('tipo_operacion').notNull().default('INTERNA'),
     /** Cuenta de destino del gasto/compra (código del plan): 5.2 compras, 6.x gasto, 1.4 inventario. */
     cuentaDestino: text('cuenta_destino').notNull().default('5.2'),
     /** Instante del documento del proveedor (UTC). La fecha fiscal/período se derivan en Caracas. */

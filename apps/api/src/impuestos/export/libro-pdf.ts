@@ -26,23 +26,26 @@ const S = StyleSheet.create({
 
 // Anchos relativos por columna (suman ~100).
 const W = {
-  fecha: 6,
-  tipo: 7,
-  rif: 8,
-  nombre: 13,
-  numero: 6,
-  control: 6,
-  afectado: 5,
-  baseG: 7,
-  ivaG: 6,
-  baseR: 6,
-  ivaR: 5,
+  fecha: 5,
+  tipo: 4,
+  tipoOp: 5,
+  rif: 7,
+  nombre: 9,
+  numero: 5,
+  control: 5,
+  afectado: 4,
+  comprobRet: 6,
+  baseG: 6,
+  ivaG: 5,
+  baseR: 5,
+  ivaR: 4,
   baseA: 5,
-  ivaA: 5,
-  exento: 6,
-  export: 6,
-  total: 7,
-  ret: 6,
+  ivaA: 4,
+  exento: 4,
+  exonerado: 4,
+  export: 4,
+  total: 5,
+  ret: 4,
 };
 
 function fmt(v: string, factor: 1 | -1 = 1): string {
@@ -62,11 +65,13 @@ function encabezado(): ReturnType<typeof h> {
   return h(View, { key: 'cab', style: S.cab }, [
     celdaTxt('fecha', W.fecha, 'Fecha'),
     celdaTxt('tipo', W.tipo, 'Tipo'),
+    celdaTxt('tipoOp', W.tipoOp, 'Operación'),
     celdaTxt('rif', W.rif, 'RIF'),
     celdaTxt('nombre', W.nombre, 'Nombre/Razón social'),
     celdaTxt('numero', W.numero, 'Nº doc'),
     celdaTxt('control', W.control, 'Nº control'),
     celdaTxt('afectado', W.afectado, 'Afect.'),
+    celdaTxt('comprobRet', W.comprobRet, 'Comp. ret.'),
     celdaNum('baseG', W.baseG, 'Base 16%'),
     celdaNum('ivaG', W.ivaG, 'IVA 16%'),
     celdaNum('baseR', W.baseR, 'Base 8%'),
@@ -74,6 +79,7 @@ function encabezado(): ReturnType<typeof h> {
     celdaNum('baseA', W.baseA, 'Base 31%'),
     celdaNum('ivaA', W.ivaA, 'IVA 31%'),
     celdaNum('exento', W.exento, 'Exento'),
+    celdaNum('exonerado', W.exonerado, 'Exoner.'),
     celdaNum('export', W.export, 'Export.'),
     celdaNum('total', W.total, 'Total'),
     celdaNum('ret', W.ret, 'Ret. IVA'),
@@ -85,11 +91,13 @@ function filaPdf(f: LibroFila, i: number): ReturnType<typeof h> {
   return h(View, { key: `f${i}`, style: S.fila }, [
     celdaTxt('fecha', W.fecha, f.fecha),
     celdaTxt('tipo', W.tipo, f.tipoDocumento.replace('NOTA_', 'N')),
+    celdaTxt('tipoOp', W.tipoOp, abreviarOperacion(f.tipoOperacion)),
     celdaTxt('rif', W.rif, f.rif),
     celdaTxt('nombre', W.nombre, f.nombre),
     celdaTxt('numero', W.numero, f.numero),
     celdaTxt('control', W.control, f.numeroControl),
     celdaTxt('afectado', W.afectado, f.numeroDocAfectado),
+    celdaTxt('comprobRet', W.comprobRet, f.numeroComprobanteRetencion),
     celdaNum('baseG', W.baseG, fmt(f.baseGeneral, s)),
     celdaNum('ivaG', W.ivaG, fmt(f.ivaGeneral, s)),
     celdaNum('baseR', W.baseR, fmt(f.baseReducida, s)),
@@ -97,6 +105,7 @@ function filaPdf(f: LibroFila, i: number): ReturnType<typeof h> {
     celdaNum('baseA', W.baseA, fmt(f.baseAdicional, s)),
     celdaNum('ivaA', W.ivaA, fmt(f.ivaAdicional, s)),
     celdaNum('exento', W.exento, fmt(f.baseExenta, s)),
+    celdaNum('exonerado', W.exonerado, fmt(f.baseExonerada, s)),
     celdaNum('export', W.export, fmt(f.baseExportacion, s)),
     celdaNum('total', W.total, fmt(f.totalConIva, s)),
     celdaNum('ret', W.ret, fmt(f.ivaRetenido, s)),
@@ -111,8 +120,8 @@ function filaTotales(libro: Libro): ReturnType<typeof h> {
   const adi = g('ADICIONAL');
   const ret = libro.filas.reduce((acc, f) => acc.plus(new Decimal(f.ivaRetenido).times(f.factor)), new Decimal(0)).toFixed(2);
   return h(View, { key: 'tot', style: S.tot }, [
-    celdaTxt('fecha', W.fecha + W.tipo + W.rif, 'TOTALES DEL PERÍODO'),
-    celdaTxt('nombre', W.nombre + W.numero + W.control + W.afectado, ''),
+    celdaTxt('lbl', W.fecha + W.tipo + W.tipoOp + W.rif, 'TOTALES DEL PERÍODO'),
+    celdaTxt('gap', W.nombre + W.numero + W.control + W.afectado + W.comprobRet, ''),
     celdaNum('baseG', W.baseG, fmt(gen?.base ?? '0')),
     celdaNum('ivaG', W.ivaG, fmt(gen?.monto ?? '0')),
     celdaNum('baseR', W.baseR, fmt(red?.base ?? '0')),
@@ -120,10 +129,18 @@ function filaTotales(libro: Libro): ReturnType<typeof h> {
     celdaNum('baseA', W.baseA, fmt(adi?.base ?? '0')),
     celdaNum('ivaA', W.ivaA, fmt(adi?.monto ?? '0')),
     celdaNum('exento', W.exento, fmt(r.baseExenta)),
+    celdaNum('exonerado', W.exonerado, fmt(r.baseExonerada)),
     celdaNum('export', W.export, fmt(r.baseExportacion)),
     celdaNum('total', W.total, fmt(r.totalConIva)),
     celdaNum('ret', W.ret, fmt(ret)),
   ]);
+}
+
+/** Abrevia el tipo de operación para la columna estrecha del PDF. */
+function abreviarOperacion(t: LibroFila['tipoOperacion']): string {
+  if (t === 'IMPORTACION') return 'Import.';
+  if (t === 'EXPORTACION') return 'Export.';
+  return 'Interna';
 }
 
 export async function generarLibroPdf(libro: Libro): Promise<{ buffer: Buffer; filename: string }> {
