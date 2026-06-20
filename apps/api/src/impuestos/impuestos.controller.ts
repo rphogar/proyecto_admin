@@ -1,5 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Post, Query, StreamableFile } from '@nestjs/common';
-import { type DeclaracionIgtfBorrador, DeclaracionesService, type PlanillaIvaBorrador } from './declaraciones.service';
+import type { TipoAnticipo } from '@contave/fiscal-engine';
+import type { EntradaCalendarioSpe } from '../portal/obligaciones';
+import { type AnticipoBorrador, type DeclaracionIgtfBorrador, DeclaracionesService, type PlanillaIvaBorrador } from './declaraciones.service';
 import { generarLibroExcel } from './export/libro-excel';
 import { generarLibroPdf } from './export/libro-pdf';
 import { type Libro, LibrosService } from './libros.service';
@@ -72,6 +74,30 @@ export class ImpuestosController {
     return this.declaraciones.declaracionIgtf(companyId, anio, mes);
   }
 
+  @Get('anticipo')
+  async anticipo(@Query() q: Record<string, string>): Promise<AnticipoBorrador> {
+    const { companyId, anio, mes } = parseLibroQuery(q);
+    const tipo = parseTipoAnticipo(q.tipo);
+    const subperiodo = parseSubperiodo(q.subperiodo);
+    return this.declaraciones.anticipoBorrador(companyId, tipo, anio, mes, subperiodo);
+  }
+
+  // ── Calendario SPE (datos por providencia, regla 17) ─────────────────────────
+  @Get('calendario-spe')
+  async calendarioSpe(@Query('anio') anioRaw: string): Promise<{ anio: number; entradas: EntradaCalendarioSpe[] }> {
+    const anio = Number(anioRaw);
+    if (!Number.isInteger(anio)) throw new BadRequestException('anio es obligatorio y debe ser entero');
+    return { anio, entradas: await this.declaraciones.obtenerCalendarioSpe(anio) };
+  }
+
+  @Post('calendario-spe/importar')
+  async importarCalendarioSpe(@Body() body: Record<string, unknown>): Promise<{ anio: number; entradas: number }> {
+    const anio = Number(body.anio);
+    if (!Number.isInteger(anio)) throw new BadRequestException('anio es obligatorio y debe ser entero');
+    if (!Array.isArray(body.entradas)) throw new BadRequestException('entradas debe ser un arreglo');
+    return this.declaraciones.importarCalendarioSpe(anio, body.entradas as EntradaCalendarioSpe[]);
+  }
+
   @Get('declaraciones')
   async listarDeclaraciones(@Query('companyId') companyId: string): Promise<(typeof taxReturns.$inferSelect)[]> {
     if (!companyId) throw new BadRequestException('companyId es obligatorio');
@@ -83,10 +109,18 @@ export class ImpuestosController {
     const companyId = String(body.companyId ?? '');
     if (!companyId) throw new BadRequestException('companyId es obligatorio');
     const tipo = String(body.tipo ?? '').toUpperCase();
-    if (tipo !== 'IVA' && tipo !== 'IGTF') throw new BadRequestException('tipo debe ser IVA o IGTF');
+    const tiposValidos = ['IVA', 'IGTF', 'ANTICIPO_IVA', 'ANTICIPO_ISLR'];
+    if (!tiposValidos.includes(tipo)) throw new BadRequestException(`tipo debe ser uno de: ${tiposValidos.join(', ')}`);
     const { anio, mes } = parsePeriodo(body.anio, body.mes);
     const numeroDeclaracion = body.numeroDeclaracion == null ? null : String(body.numeroDeclaracion);
-    return this.declaraciones.presentar({ companyId, tipo: tipo as 'IVA' | 'IGTF', anio, mes, numeroDeclaracion });
+    return this.declaraciones.presentar({
+      companyId,
+      tipo: tipo as 'IVA' | 'IGTF' | TipoAnticipo,
+      anio,
+      mes,
+      numeroDeclaracion,
+      ...(body.subperiodo == null ? {} : { subperiodo: parseSubperiodo(String(body.subperiodo)) }),
+    });
   }
 }
 
@@ -96,6 +130,20 @@ function parseLibroQuery(q: Record<string, string>): { companyId: string; anio: 
   if (!q.companyId) throw new BadRequestException('companyId es obligatorio');
   const { anio, mes } = parsePeriodo(q.anio, q.mes);
   return { companyId: q.companyId, anio, mes };
+}
+
+function parseTipoAnticipo(raw: string | undefined): TipoAnticipo {
+  const t = String(raw ?? '').toUpperCase();
+  if (t !== 'ANTICIPO_IVA' && t !== 'ANTICIPO_ISLR') {
+    throw new BadRequestException('tipo debe ser ANTICIPO_IVA o ANTICIPO_ISLR');
+  }
+  return t;
+}
+
+function parseSubperiodo(raw: string | undefined): number {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) throw new BadRequestException('subperiodo debe ser un entero ≥ 1 (la fracción)');
+  return n;
 }
 
 function parsePeriodo(anioRaw: unknown, mesRaw: unknown): { anio: number; mes: number } {

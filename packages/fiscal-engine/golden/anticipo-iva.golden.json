@@ -1,0 +1,50 @@
+{
+  "_doc": "Golden del anticipo de IVA de SPE (docs/02 §3.2/§10). Valores exactos verificados a mano. anticipo = ingresos brutos × alícuota; del calculado se descuentan retenciones soportadas y anticipos previos. La base son los INGRESOS BRUTOS del Libro de Ventas, sin IGTF (casos 34/35).",
+  "quincena_base_1pct": {
+    "_caso": "SPE, quincena con ingresos brutos Bs 200.000 y alícuota de anticipo de IVA 1% (parámetro de providencia). Sin créditos → anticipo a pagar Bs 2.000.",
+    "input": {
+      "ingresosBrutos": "200000.00",
+      "porcentaje": "1"
+    },
+    "esperado": {
+      "baseImponible": "200000.00",
+      "porcentaje": "1.00",
+      "anticipoCalculado": "2000.00",
+      "creditosAplicados": "0.00",
+      "anticipoAPagar": "2000.00",
+      "excedenteCreditosSiguiente": "0.00"
+    }
+  },
+  "con_retenciones_soportadas": {
+    "_caso": "Misma quincena con retenciones de IVA soportadas acumuladas Bs 500 y un anticipo previo de Bs 300: créditos Bs 800 imputados → anticipo a pagar Bs 1.200.",
+    "input": {
+      "ingresosBrutos": "200000.00",
+      "porcentaje": "1",
+      "retencionesAcumuladas": "500.00",
+      "anticiposPagadosAcumulados": "300.00"
+    },
+    "esperado": {
+      "baseImponible": "200000.00",
+      "porcentaje": "1.00",
+      "anticipoCalculado": "2000.00",
+      "creditosAplicados": "800.00",
+      "anticipoAPagar": "1200.00",
+      "excedenteCreditosSiguiente": "0.00"
+    }
+  },
+  "base_excluye_igtf_caso34": {
+    "_caso": "Caso 34 — cobro de $100 a BCV 40,00 = Bs 4.000 de venta, más IGTF 3% percibido (Bs 120). El anticipo se calcula sobre los INGRESOS BRUTOS (Bs 4.000), NUNCA sobre lo cobrado con IGTF (Bs 4.120): alícuota 1% → Bs 40, no Bs 41,20. El IGTF se declara aparte y no se duplica en el anticipo.",
+    "input": {
+      "ingresosBrutos": "4000.00",
+      "porcentaje": "1"
+    },
+    "esperado": {
+      "baseImponible": "4000.00",
+      "porcentaje": "1.00",
+      "anticipoCalculado": "40.00",
+      "creditosAplicados": "0.00",
+      "anticipoAPagar": "40.00",
+      "excedenteCreditosSiguiente": "0.00"
+    }
+  }
+}

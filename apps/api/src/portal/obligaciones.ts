@@ -1,21 +1,48 @@
 /**
- * Derivación pura del calendario de obligaciones tributarias por empresa (P16, docs/02 §10, docs/06
+ * Derivación pura del calendario de obligaciones tributarias por empresa (P16/P21, docs/02 §10, docs/06
  * M11). Sin IO ni dependencias de Nest → se prueba en unidad. Generaliza el "semáforo fiscal" del
  * dashboard (P14) al portal del contador: una fila por (empresa, tipo, período) con su fecha límite,
  * días restantes y estado (PRESENTADA / PENDIENTE) tomado de las declaraciones realmente presentadas.
  *
  * Alcance v1 (lo que el sistema puede verificar hoy contra `tax_returns`): IVA mensual para todos y
- * IGTF percibido para Sujetos Pasivos Especiales designados. El resto del calendario (retenciones,
- * ISLR, ISAE, parafiscales) y, sobre todo, el **calendario SPE por dígito terminal del RIF** se
- * publica por providencia y debe entrar como parámetro con vigencia (regla 17), no como código.
+ * IGTF percibido para Sujetos Pasivos Especiales designados. La **fecha límite de los SPE se toma del
+ * calendario por dígito terminal del RIF**, que entra como datos por providencia anual (regla 17): el
+ * servicio carga el parámetro `CALENDARIO_SPE` y lo inyecta aquí; si no hay entrada vigente se cae a la
+ * regla ordinaria (día 15 del mes siguiente). El resto del calendario (retenciones, ISLR, ISAE,
+ * parafiscales) se incorpora a medida que el sistema pueda verificarlo contra datos.
  *
- * TODO-TRIBUTARISTA: los SPE declaran IVA y enteran retenciones según el calendario especial del
- * SENIAT (por terminal de RIF, quincenal); aquí se aproxima con la regla ordinaria (día 15 del mes
- * siguiente) hasta importar ese calendario como datos. Validar con tributarista antes de producción.
+ * TODO-TRIBUTARISTA: validar las fechas del calendario SPE importado contra la providencia vigente y la
+ * cadencia de los anticipos (quincenal/semanal) antes de producción.
  */
 
 /** Día del mes siguiente en que vence la declaración mensual del contribuyente ordinario. */
 const DIA_VENCIMIENTO_DEFECTO = 15;
+
+/**
+ * Entrada del calendario SPE publicado por providencia: para un dígito terminal de RIF, un tipo de
+ * obligación y un período fiscal, la fecha límite (Caracas) de presentación/pago. Importado como datos
+ * (regla 17), nunca hardcode.
+ */
+export interface EntradaCalendarioSpe {
+  /** Último dígito del RIF ('0'..'9'). */
+  readonly terminalRif: string;
+  /** IVA | IGTF | RET_IVA | ANTICIPO_IVA | ANTICIPO_ISLR | … */
+  readonly tipo: string;
+  readonly periodoAnio: number;
+  readonly periodoMes: number;
+  /** Fracción (quincena/semana) para anticipos; ausente/0 para obligaciones mensuales. */
+  readonly subperiodo?: number;
+  /** Fecha límite `YYYY-MM-DD` (hora de Caracas). */
+  readonly fechaLimite: string;
+}
+
+export type CalendarioSpe = ReadonlyArray<EntradaCalendarioSpe>;
+
+/** Último dígito del RIF (dígito terminal con que el SENIAT organiza el calendario SPE), o null. */
+export function terminalRif(rif: string): string | null {
+  const digitos = rif.replace(/[^0-9]/g, '');
+  return digitos.length === 0 ? null : digitos[digitos.length - 1]!;
+}
 
 /** Perfil mínimo de la empresa necesario para derivar sus obligaciones. */
 export interface PerfilEmpresa {
@@ -59,12 +86,17 @@ export function obligacionesDeEmpresa(
   hoy: string,
   periodos: ReadonlyArray<PeriodoFiscal>,
   presentadas: ReadonlySet<string>,
+  calendario: CalendarioSpe = [],
 ): ObligacionPortal[] {
   const tipos: TipoObligacion[] = empresa.spe ? ['IVA', 'IGTF'] : ['IVA'];
+  const terminal = empresa.spe ? terminalRif(empresa.rif) : null;
   const obligaciones: ObligacionPortal[] = [];
   for (const p of periodos) {
     for (const tipo of tipos) {
-      const fechaLimite = vencimientoMensual(p.anio, p.mes);
+      // SPE: fecha límite del calendario por terminal de RIF (datos por providencia); si no hay
+      // entrada vigente, se cae a la regla ordinaria (día 15 del mes siguiente).
+      const fechaLimite =
+        fechaCalendarioSpe(calendario, terminal, tipo, p) ?? vencimientoMensual(p.anio, p.mes);
       obligaciones.push({
         companyId: empresa.companyId,
         rif: empresa.rif,
@@ -78,6 +110,25 @@ export function obligacionesDeEmpresa(
     }
   }
   return obligaciones;
+}
+
+/** Busca la fecha límite del calendario SPE para (terminal, tipo, período mensual); null si no hay. */
+function fechaCalendarioSpe(
+  calendario: CalendarioSpe,
+  terminal: string | null,
+  tipo: string,
+  p: PeriodoFiscal,
+): string | null {
+  if (terminal === null) return null;
+  const e = calendario.find(
+    (x) =>
+      x.terminalRif === terminal &&
+      x.tipo === tipo &&
+      x.periodoAnio === p.anio &&
+      x.periodoMes === p.mes &&
+      (x.subperiodo === undefined || x.subperiodo === 0),
+  );
+  return e?.fechaLimite ?? null;
 }
 
 /** Clave canónica de una declaración presentada: `'TIPO-AAAA-M'` (mes sin padding, como en BD). */

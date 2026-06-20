@@ -1,0 +1,34 @@
+{
+  "_doc": "Golden del anticipo de ISLR de SPE (docs/02 §4/§10). Valores exactos verificados a mano. anticipo = ingresos brutos × alícuota de la providencia; pago a cuenta del ISLR del ejercicio. La base son los ingresos brutos, sin IGTF.",
+  "semana_base_2pct": {
+    "_caso": "SPE, semana con ingresos brutos Bs 300.000 y alícuota de anticipo de ISLR 2% (parámetro de providencia). Sin créditos → anticipo a pagar Bs 6.000.",
+    "input": {
+      "ingresosBrutos": "300000.00",
+      "porcentaje": "2"
+    },
+    "esperado": {
+      "baseImponible": "300000.00",
+      "porcentaje": "2.00",
+      "anticipoCalculado": "6000.00",
+      "creditosAplicados": "0.00",
+      "anticipoAPagar": "6000.00",
+      "excedenteCreditosSiguiente": "0.00"
+    }
+  },
+  "con_retenciones_islr": {
+    "_caso": "Misma semana con retenciones de ISLR soportadas Bs 6.500 (mayores al anticipo): se imputan hasta el tope del anticipo (Bs 6.000) → anticipo a pagar Bs 0 y excedente de créditos Bs 500 trasladable.",
+    "input": {
+      "ingresosBrutos": "300000.00",
+      "porcentaje": "2",
+      "retencionesAcumuladas": "6500.00"
+    },
+    "esperado": {
+      "baseImponible": "300000.00",
+      "porcentaje": "2.00",
+      "anticipoCalculado": "6000.00",
+      "creditosAplicados": "6000.00",
+      "anticipoAPagar": "0.00",
+      "excedenteCreditosSiguiente": "500.00"
+    }
+  }
+}

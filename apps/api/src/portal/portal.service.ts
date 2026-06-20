@@ -5,9 +5,12 @@ import { CierreMensualService, type PasoCierre } from '../contabilidad/cierre-me
 import { DatabaseService, type DatabaseTx } from '../db/database.service';
 import { cierresMensuales, companies, periods, taxReturns } from '../db/schema';
 import { optionalInt } from '../maestros/validacion';
+import { leerParametro } from '../nomina/nomina-comun';
 import { withTenant } from '../tenant/with-tenant';
 import {
+  type CalendarioSpe,
   claveDeclaracion,
+  type EntradaCalendarioSpe,
   etiquetaPeriodo,
   obligacionesDeEmpresa,
   type ObligacionPortal,
@@ -94,10 +97,11 @@ export class PortalService {
 
     return withTenant(this.database.db, async (tx) => {
       const { empresas, periodosPorEmpresa, cierresPorEmpresa, presentadasPorEmpresa } = await this.cargarCartera(tx);
+      const calendario = await this.cargarCalendarioSpe(tx, ventana);
 
       const filas: EmpresaPanel[] = empresas.map((e) => {
         const cierre = estadoCierre(periodosPorEmpresa.get(e.companyId) ?? [], cierresPorEmpresa.get(e.companyId) ?? [], anio, mes);
-        const obligaciones = obligacionesDeEmpresa(e, hoy, ventana, presentadasPorEmpresa.get(e.companyId) ?? new Set());
+        const obligaciones = obligacionesDeEmpresa(e, hoy, ventana, presentadasPorEmpresa.get(e.companyId) ?? new Set(), calendario);
         const pendientes = obligaciones.filter((o) => o.estado === 'PENDIENTE');
         const proxima = pendientes.slice().sort((a, b) => a.diasRestantes - b.diasRestantes)[0] ?? null;
         return {
@@ -129,8 +133,9 @@ export class PortalService {
 
     return withTenant(this.database.db, async (tx) => {
       const { empresas, presentadasPorEmpresa } = await this.cargarCartera(tx, { soloObligaciones: true });
+      const calendario = await this.cargarCalendarioSpe(tx, ventana);
       const obligaciones = empresas
-        .flatMap((e) => obligacionesDeEmpresa(e, hoy, ventana, presentadasPorEmpresa.get(e.companyId) ?? new Set()))
+        .flatMap((e) => obligacionesDeEmpresa(e, hoy, ventana, presentadasPorEmpresa.get(e.companyId) ?? new Set(), calendario))
         .sort((a, b) => a.fechaLimite.localeCompare(b.fechaLimite) || a.razonSocial.localeCompare(b.razonSocial));
       return { fecha: hoy, obligaciones };
     });
@@ -177,6 +182,22 @@ export class PortalService {
         cerradas: filas.filter((f) => f.yaCerrado).length,
       },
     };
+  }
+
+  /**
+   * Carga el calendario SPE vigente (parámetro `CALENDARIO_SPE`, datos por providencia — regla 17) para
+   * los años de la ventana de períodos. El valor es un arreglo de entradas por terminal de RIF; se
+   * concatenan los años distintos de la ventana. Si no hay parámetro sembrado, el calendario es vacío y
+   * las obligaciones caen a la regla ordinaria (día 15).
+   */
+  private async cargarCalendarioSpe(tx: DatabaseTx, ventana: ReadonlyArray<{ anio: number; mes: number }>): Promise<CalendarioSpe> {
+    const anios = [...new Set(ventana.map((p) => p.anio))];
+    const entradas: EntradaCalendarioSpe[] = [];
+    for (const anio of anios) {
+      const valor = await leerParametro(tx, 'CALENDARIO_SPE', `${anio}-01-01`);
+      if (Array.isArray(valor)) entradas.push(...(valor as EntradaCalendarioSpe[]));
+    }
+    return entradas;
   }
 
   /**

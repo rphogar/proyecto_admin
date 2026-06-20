@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type CalendarioSpe,
   claveDeclaracion,
   diferenciaDias,
   obligacionesDeEmpresa,
   periodoAnterior,
   periodoSiguiente,
   type PerfilEmpresa,
+  terminalRif,
 } from './obligaciones';
 
 const ordinario: PerfilEmpresa = {
@@ -43,6 +45,31 @@ describe('obligacionesDeEmpresa (P16, docs/02 §10)', () => {
   it('días restantes negativos cuando la fecha límite ya pasó', () => {
     const obs = obligacionesDeEmpresa(ordinario, '2026-06-20', [{ anio: 2026, mes: 5 }], new Set());
     expect(obs[0]!.diasRestantes).toBe(-5);
+  });
+
+  it('SPE: la fecha límite viene del calendario por terminal de RIF (datos por providencia)', () => {
+    // RIF J-00000002-3 → terminal '3'. Calendario fija el IVA de 2026-05 al día 22.
+    const calendario: CalendarioSpe = [
+      { terminalRif: '3', tipo: 'IVA', periodoAnio: 2026, periodoMes: 5, fechaLimite: '2026-06-22' },
+    ];
+    const obs = obligacionesDeEmpresa(especial, '2026-06-10', [{ anio: 2026, mes: 5 }], new Set(), calendario);
+    expect(obs.find((o) => o.tipo === 'IVA')!.fechaLimite).toBe('2026-06-22');
+    // IGTF no está en el calendario → cae a la regla ordinaria (día 15).
+    expect(obs.find((o) => o.tipo === 'IGTF')!.fechaLimite).toBe('2026-06-15');
+  });
+
+  it('el ordinario ignora el calendario SPE (su vencimiento es legal, día 15)', () => {
+    const calendario: CalendarioSpe = [
+      { terminalRif: '5', tipo: 'IVA', periodoAnio: 2026, periodoMes: 5, fechaLimite: '2026-06-22' },
+    ];
+    const obs = obligacionesDeEmpresa(ordinario, '2026-06-10', [{ anio: 2026, mes: 5 }], new Set(), calendario);
+    expect(obs[0]!.fechaLimite).toBe('2026-06-15');
+  });
+
+  it('terminalRif extrae el último dígito del RIF', () => {
+    expect(terminalRif('J-13579246-8')).toBe('8');
+    expect(terminalRif('V-00000002-3')).toBe('3');
+    expect(terminalRif('sin-digitos')).toBeNull();
   });
 
   it('genera obligaciones para varios períodos', () => {

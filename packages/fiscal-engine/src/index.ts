@@ -89,6 +89,16 @@ export type {
   ResultadoDeclaracionIgtf,
 } from './declaraciones/declaracion-igtf';
 
+// P21 — Anticipos quincenales/semanales de IVA e ISLR de SPE sobre ingresos brutos (docs/02 §3.2/§10;
+// casos 34, 35 para la no duplicación con el IGTF). Alícuota y cadencia desde fiscal_params (regla 17).
+export { calcularAnticipo } from './declaraciones/anticipo';
+export type {
+  TipoAnticipo,
+  AnticipoInput,
+  OpcionesAnticipo,
+  ResultadoAnticipo,
+} from './declaraciones/anticipo';
+
 // P12 — Inventario: kardex y costo promedio ponderado móvil en doble base (docs/03 §4.3, art. 177
 // Ley ISLR; casos 37–39). Función pura: el servicio resuelve los stock_moves y este motor valora.
 export { calcularKardex, costoVigente, StockInsuficienteError } from './inventario/kardex';

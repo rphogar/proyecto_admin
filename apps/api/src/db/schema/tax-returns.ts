@@ -29,10 +29,16 @@ export const taxReturns = pgTable(
     companyId: uuid('company_id')
       .notNull()
       .references(() => companies.id, { onDelete: 'cascade' }),
-    /** IVA | ISLR | IGTF | RET_IVA | RET_ISLR | ISAE (CHECK en 0030). */
+    /** IVA | ISLR | IGTF | RET_IVA | RET_ISLR | ISAE | ANTICIPO_IVA | ANTICIPO_ISLR (CHECK en 0030/0059). */
     tipo: text('tipo').notNull(),
     periodoAnio: integer('periodo_anio').notNull(),
     periodoMes: integer('periodo_mes').notNull(),
+    /**
+     * Fracción dentro del mes para los anticipos quincenales/semanales de SPE (P21): 0 = declaración
+     * mensual (IVA/IGTF/…); 1..N = número de quincena/semana del régimen de anticipos. Permite varias
+     * declaraciones por (empresa, tipo, mes) sin romper la unicidad (CHECK/UNIQUE en 0059).
+     */
+    subperiodo: integer('subperiodo').notNull().default(0),
     /** BORRADOR | PRESENTADA (CHECK en 0030). PRESENTADA es inmutable. */
     status: text('status').notNull().default('BORRADOR'),
     /** Número de la declaración/recibo asignado por el portal SENIAT al presentar. */
@@ -47,5 +53,5 @@ export const taxReturns = pgTable(
     createdBy: uuid('created_by').references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [unique('tax_returns_company_tipo_periodo_uq').on(t.companyId, t.tipo, t.periodoAnio, t.periodoMes)],
+  (t) => [unique('tax_returns_company_tipo_periodo_uq').on(t.companyId, t.tipo, t.periodoAnio, t.periodoMes, t.subperiodo)],
 );

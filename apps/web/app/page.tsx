@@ -33,6 +33,9 @@ export default function Home() {
           <Link href="/nomina/trabajadores">Nómina</Link>
         </Button>
         <Button variant="outline" asChild>
+          <Link href="/impuestos/iva">Impuestos</Link>
+        </Button>
+        <Button variant="outline" asChild>
           <Link href="/portal">Portal del contador</Link>
         </Button>
       </div>

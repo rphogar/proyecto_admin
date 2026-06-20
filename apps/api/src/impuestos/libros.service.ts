@@ -155,6 +155,45 @@ export class LibrosService {
     });
   }
 
+  /**
+   * Ingresos brutos de ventas (base, sin IVA ni IGTF) con fecha fiscal en la ventana `[desde, hasta)`
+   * de Caracas. Base del anticipo de SPE (P21): suma todas las bases del Libro de Ventas (gravada,
+   * exenta, exonerada y exportación) con su signo fiscal (NC resta). El IGTF percibido vive en los
+   * cobros, NUNCA en `document_taxes`, de modo que jamás se duplica aquí (casos 34/35).
+   */
+  async ingresosBrutosVentas(
+    companyId: string,
+    desde: string,
+    hasta: string,
+  ): Promise<{ base: string; operaciones: number }> {
+    return withTenant(this.database.db, async (tx) => {
+      await asegurarEmpresaDelTenant(tx, companyId);
+      const docs = await tx
+        .select({ id: documents.id, type: documents.type })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.companyId, companyId),
+            inArray(documents.type, [...TIPOS_VENTA]),
+            inArray(documents.status, [...ESTADOS_EMITIDOS]),
+            gte(documents.issueFechaFiscal, desde),
+            lt(documents.issueFechaFiscal, hasta),
+          ),
+        );
+      if (docs.length === 0) return { base: '0.00', operaciones: 0 };
+      const factorPorDoc = new Map(docs.map((d) => [d.id, d.type === 'NOTA_CREDITO' ? -1 : 1] as const));
+      const taxes = await tx
+        .select({ documentId: documentTaxes.documentId, baseVes: documentTaxes.baseVes })
+        .from(documentTaxes)
+        .where(inArray(documentTaxes.documentId, docs.map((d) => d.id)));
+      const base = taxes.reduce(
+        (s, t) => s.plus(new Decimal(t.baseVes).times(factorPorDoc.get(t.documentId) ?? 1)),
+        new Decimal(0),
+      );
+      return { base: base.toDecimalPlaces(2).toFixed(2), operaciones: docs.length };
+    });
+  }
+
   /** Libro de Compras del período (facturas, NC y ND de proveedores con fecha fiscal en el mes). */
   async libroCompras(companyId: string, anio: number, mes: number): Promise<Libro> {
     const { desde, hasta } = rangoPeriodo(anio, mes);
