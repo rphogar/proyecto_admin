@@ -1,4 +1,4 @@
-import { Decimal, validarRif } from '@contave/shared';
+import { Decimal, REDONDEO_FISCAL, validarRif } from '@contave/shared';
 
 /**
  * Validador PRE-EMISIÓN de requisitos de facturación (Providencias SNAT/2011/00071 y
@@ -9,13 +9,17 @@ import { Decimal, validarRif } from '@contave/shared';
  * se emite"). La UI/servicio jamás decide por su cuenta: solo muestra/actúa sobre esta lista.
  *
  * Cubre los requisitos mínimos del art. 6.1 de la 00071 (denominación, numeración, número de
- * control, datos del emisor, fecha, identificación del adquirente, descripción, base e IVA
- * discriminados por alícuota, total, moneda con contravalor en Bs y tasa BCV, condición de pago)
- * y los específicos digitales de la 00102. No calcula impuestos (eso es el motor de IVA, P7):
- * recibe los importes ya discriminados y verifica su presencia, coherencia y consistencia.
+ * control, datos del emisor, fecha, identificación del adquirente, descripción con cantidad y
+ * precio, descuentos, base e IVA discriminados por alícuota, total, moneda con contravalor en Bs
+ * y tasa BCV, condición de pago) y los específicos digitales de la 00102. No calcula impuestos
+ * (eso es el motor de IVA, P7): recibe los importes ya discriminados y verifica su presencia,
+ * **coherencia y consistencia** (código de alícuota ↔ tasa; IVA = base × tasa; contravalor en Bs
+ * = total × tasa BCV).
  *
- * Casos del doc 07 cubiertos: 15 (consumidor final/umbral), 16 (RIF inválido), 12 (discriminación
- * por alícuota), 19 (NC/ND referencian la factura afectada).
+ * Casos del doc 07 cubiertos: 12 (discriminación por alícuota), 14 (cambio de alícuota por
+ * vigencia, tasa como parámetro), 15 (consumidor final/umbral), 16 (RIF inválido), 19 (NC/ND
+ * referencian la factura afectada), 22 (exportación 0% sin IVA en su columna), 23 (factura en
+ * divisa con doble conversión: equivalente en Bs y tasa BCV aplicada).
  */
 
 /** Tipos de documento fiscal (docs/05 §3.4). */
@@ -73,6 +77,8 @@ export interface LineaAValidar {
   readonly descripcion: string | null | undefined;
   readonly cantidad: string | number | null | undefined;
   readonly precioUnitario: string | number | null | undefined;
+  /** Descuento de la línea (00071 art. 6.1: "indicación de descuentos"). Opcional; default 0. */
+  readonly descuento?: string | number | null;
   readonly alicuotaCodigo: AlicuotaCodigo | null | undefined;
   readonly alicuotaTasa: string | number | null | undefined;
 }
@@ -272,8 +278,33 @@ function validarLineas(doc: DocumentoAEmitir, add: (c: string, ca: string, m: st
     if (precio === null || precio.lt(0)) {
       add('LINEA_PRECIO_INVALIDO', `${campo}.precioUnitario`, `Línea ${i + 1}: el precio unitario es inválido`, 'SNAT/2011/00071');
     }
+
+    // Descuento (00071 art. 6.1): si viene, debe ser ≥ 0 y no superar el bruto (cantidad × precio),
+    // o la base imponible quedaría negativa.
+    if (l.descuento != null && String(l.descuento).trim() !== '') {
+      const desc = aDecimal(l.descuento);
+      if (desc === null || desc.lt(0)) {
+        add('LINEA_DESCUENTO_INVALIDO', `${campo}.descuento`, `Línea ${i + 1}: el descuento es inválido o negativo`, 'SNAT/2011/00071');
+      } else if (cant !== null && cant.gt(0) && precio !== null && precio.gte(0) && desc.gt(cant.times(precio))) {
+        add('LINEA_DESCUENTO_INVALIDO', `${campo}.descuento`, `Línea ${i + 1}: el descuento supera el subtotal de la línea`, 'SNAT/2011/00071');
+      }
+    }
+
     if (l.alicuotaCodigo == null || !ALICUOTAS_VALIDAS.has(l.alicuotaCodigo)) {
       add('LINEA_ALICUOTA_INVALIDA', `${campo}.alicuotaCodigo`, `Línea ${i + 1}: la alícuota de IVA es inválida`, 'SNAT/2011/00071');
+    } else {
+      // Coherencia código ↔ tasa: las alícuotas sin causación (EXENTO/EXONERADO/EXPORTACIÓN) van
+      // siempre a 0%; las que causan IVA (GENERAL/REDUCIDA/ADICIONAL) exigen una tasa > 0. Así el
+      // 0% de exportación (caso 22) no se confunde con una venta gravada mal tasada.
+      const tasa = aDecimal(l.alicuotaTasa);
+      if (tasa !== null) {
+        const sinIva = ALICUOTAS_SIN_IVA.has(l.alicuotaCodigo);
+        if (sinIva && !tasa.isZero()) {
+          add('LINEA_TASA_INCOHERENTE', `${campo}.alicuotaTasa`, `Línea ${i + 1}: la alícuota ${l.alicuotaCodigo} no causa IVA: su tasa debe ser 0%`, 'SNAT/2011/00071');
+        } else if (!sinIva && tasa.lte(0)) {
+          add('LINEA_TASA_INCOHERENTE', `${campo}.alicuotaTasa`, `Línea ${i + 1}: la alícuota ${l.alicuotaCodigo} causa IVA: su tasa debe ser mayor que 0%`, 'SNAT/2011/00071');
+        }
+      }
     }
   });
 }
@@ -314,6 +345,27 @@ function validarImpuestosYTotal(doc: DocumentoAEmitir, add: (c: string, ca: stri
         add('IMPUESTO_SIN_IVA_EN_GRAVADA', `impuestos[${i}].monto`, `La alícuota ${t.alicuotaCodigo} grava pero su IVA es cero`, 'SNAT/2011/00071');
       }
     }
+
+    // Coherencia código ↔ tasa del renglón (igual que en líneas): sin causación ⇒ 0%; con
+    // causación ⇒ tasa > 0.
+    const sinIva = ALICUOTAS_SIN_IVA.has(t.alicuotaCodigo);
+    const tasa = aDecimal(t.alicuotaTasa);
+    if (tasa !== null) {
+      if (sinIva && !tasa.isZero()) {
+        add('IMPUESTO_TASA_INCOHERENTE', `impuestos[${i}].alicuotaTasa`, `La alícuota ${t.alicuotaCodigo} no causa IVA: su tasa debe ser 0%`, 'SNAT/2011/00071');
+      } else if (!sinIva && tasa.lte(0)) {
+        add('IMPUESTO_TASA_INCOHERENTE', `impuestos[${i}].alicuotaTasa`, `La alícuota ${t.alicuotaCodigo} causa IVA: su tasa debe ser mayor que 0%`, 'SNAT/2011/00071');
+      }
+      // El IVA discriminado debe ser coherente con base × tasa (caso 12). El motor redondea el IVA
+      // por línea, así que se admite una holgura por redondeo (5 céntimos); errores groseros
+      // (IVA omitido, tasa equivocada) caen fuera de esa holgura.
+      if (base !== null && base.gte(0) && monto !== null && monto.gte(0)) {
+        const esperado = base.times(tasa).div(100).toDecimalPlaces(2, REDONDEO_FISCAL);
+        if (monto.minus(esperado).abs().gt('0.05')) {
+          add('IMPUESTO_MONTO_INCOHERENTE', `impuestos[${i}].monto`, `El IVA de la alícuota ${t.alicuotaCodigo} (${monto.toFixed(2)}) no coincide con base × tasa (${esperado.toFixed(2)})`, 'SNAT/2011/00071');
+        }
+      }
+    }
   });
 
   // ── Total: presente, > 0 y coherente con Σ(bases)+Σ(IVA) (tolerancia 1 céntimo por redondeo) ──
@@ -342,11 +394,28 @@ function validarMoneda(doc: DocumentoAEmitir, add: (c: string, ca: string, m: st
   // art. 6.1 / Convenio Cambiario; docs/02 §9). El IVA se entera en Bs.
   if (doc.moneda.trim().toUpperCase() !== 'VES') {
     const rate = aDecimal(doc.rateBcv);
+    const totalVes = aDecimal(doc.totalVes);
     if (rate === null || rate.lte(0)) {
       add('DIVISA_SIN_TASA_BCV', 'rateBcv', 'Documento en divisa sin tasa BCV congelada', 'SNAT/2011/00071');
     }
-    if (aDecimal(doc.totalVes) === null) {
+    if (totalVes === null) {
       add('DIVISA_SIN_EQUIVALENTE_BS', 'totalVes', 'Documento en divisa sin el equivalente del total en Bs', 'SNAT/2011/00071');
+    }
+    // Doble conversión (caso 23): el equivalente en Bs debe ser el total en divisa × tasa BCV. Se
+    // admite una holgura relativa (1% + 5 céntimos) por el redondeo fiscal por alícuota; así se
+    // detecta una tasa equivocada o un contravalor sin convertir, sin falsos positivos por céntimos.
+    const totalOrigen = aDecimal(doc.total);
+    if (rate !== null && rate.gt(0) && totalVes !== null && totalOrigen !== null && totalOrigen.gt(0)) {
+      const esperadoVes = totalOrigen.times(rate);
+      const holgura = esperadoVes.times('0.01').plus('0.05');
+      if (totalVes.minus(esperadoVes).abs().gt(holgura)) {
+        add(
+          'DIVISA_CONTRAVALOR_INCOHERENTE',
+          'totalVes',
+          `El equivalente en Bs (${totalVes.toFixed(2)}) no corresponde al total ${doc.moneda} × tasa BCV (${esperadoVes.toFixed(2)})`,
+          'SNAT/2011/00071',
+        );
+      }
     }
   }
 }

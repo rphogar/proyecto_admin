@@ -216,6 +216,161 @@ describe('validarRequisitosFactura (00071/00102/00121)', () => {
     });
   });
 
+  describe('descuentos (00071 art. 6.1)', () => {
+    it('rechaza un descuento negativo', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '100', descuento: '-5', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('LINEA_DESCUENTO_INVALIDO');
+    });
+
+    it('rechaza un descuento que supera el subtotal de la línea', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '100', descuento: '200', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('LINEA_DESCUENTO_INVALIDO');
+    });
+
+    it('acepta un descuento válido dentro del subtotal', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'VES',
+        rateBcv: null,
+        lineas: [{ descripcion: 'A', cantidad: '2', precioUnitario: '100', descuento: '50', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+        impuestos: [{ alicuotaCodigo: 'GENERAL', alicuotaTasa: '16', base: '150', monto: '24' }],
+        total: '174',
+        totalVes: '174',
+      };
+      expect(validarRequisitosFactura(f)).toEqual([]);
+    });
+  });
+
+  describe('coherencia código ↔ tasa (casos 12 y 22)', () => {
+    it('rechaza una línea GENERAL con tasa 0%', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '100', alicuotaCodigo: 'GENERAL', alicuotaTasa: '0' }],
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('LINEA_TASA_INCOHERENTE');
+    });
+
+    it('rechaza una línea EXENTA/EXPORTACIÓN con tasa distinta de 0%', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '100', alicuotaCodigo: 'EXPORTACION', alicuotaTasa: '16' }],
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('LINEA_TASA_INCOHERENTE');
+    });
+
+    it('rechaza un renglón de impuesto que causa IVA con tasa 0%', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'VES',
+        rateBcv: null,
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '100', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+        impuestos: [{ alicuotaCodigo: 'GENERAL', alicuotaTasa: '0', base: '100', monto: '0' }],
+        total: '100',
+        totalVes: '100',
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('IMPUESTO_TASA_INCOHERENTE');
+    });
+
+    it('detecta un IVA discriminado que no coincide con base × tasa', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'VES',
+        rateBcv: null,
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '100', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+        // 100 × 16% = 16, pero se declara 5.
+        impuestos: [{ alicuotaCodigo: 'GENERAL', alicuotaTasa: '16', base: '100', monto: '5' }],
+        total: '105',
+        totalVes: '105',
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('IMPUESTO_MONTO_INCOHERENTE');
+    });
+  });
+
+  describe('factura multi-alícuota emitible (caso 12)', () => {
+    it('16% + 8% + exento, discriminados y cuadrados, no tiene incumplimientos', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'VES',
+        rateBcv: null,
+        lineas: [
+          { descripcion: 'Gravado 16', cantidad: '2', precioUnitario: '1000', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' },
+          { descripcion: 'Gravado 8', cantidad: '3', precioUnitario: '500', alicuotaCodigo: 'REDUCIDA', alicuotaTasa: '8' },
+          { descripcion: 'Exento', cantidad: '1', precioUnitario: '800', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0' },
+        ],
+        impuestos: [
+          { alicuotaCodigo: 'GENERAL', alicuotaTasa: '16', base: '2000', monto: '320' },
+          { alicuotaCodigo: 'REDUCIDA', alicuotaTasa: '8', base: '1500', monto: '120' },
+          { alicuotaCodigo: 'EXENTO', alicuotaTasa: '0', base: '800', monto: '0' },
+        ],
+        total: '4740',
+        totalVes: '4740',
+      };
+      expect(validarRequisitosFactura(f)).toEqual([]);
+    });
+
+    it('una alícuota a 16,5% por cambio de vigencia es emitible (caso 14)', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'VES',
+        rateBcv: null,
+        lineas: [{ descripcion: 'A', cantidad: '1', precioUnitario: '1000', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16.5' }],
+        impuestos: [{ alicuotaCodigo: 'GENERAL', alicuotaTasa: '16.5', base: '1000', monto: '165' }],
+        total: '1165',
+        totalVes: '1165',
+      };
+      expect(validarRequisitosFactura(f)).toEqual([]);
+    });
+  });
+
+  describe('exportación 0% (caso 22)', () => {
+    it('una exportación 0% sin IVA es emitible y no exige tasa BCV (VES)', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'VES',
+        rateBcv: null,
+        lineas: [{ descripcion: 'Mercancía exportada', cantidad: '1', precioUnitario: '5000', alicuotaCodigo: 'EXPORTACION', alicuotaTasa: '0' }],
+        impuestos: [{ alicuotaCodigo: 'EXPORTACION', alicuotaTasa: '0', base: '5000', monto: '0' }],
+        total: '5000',
+        totalVes: '5000',
+      };
+      expect(validarRequisitosFactura(f)).toEqual([]);
+    });
+  });
+
+  describe('divisa con doble conversión (caso 23)', () => {
+    it('una factura en EUR con contravalor en Bs coherente es emitible', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'EUR',
+        rateBcv: '44.00',
+        lineas: [{ descripcion: 'Servicio', cantidad: '1', precioUnitario: '100', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+        impuestos: [{ alicuotaCodigo: 'GENERAL', alicuotaTasa: '16', base: '100', monto: '16' }],
+        total: '116.00',
+        totalVes: '5104.00', // 116 EUR × 44 Bs/EUR
+      };
+      expect(validarRequisitosFactura(f)).toEqual([]);
+    });
+
+    it('detecta un equivalente en Bs que no corresponde al total × tasa BCV', () => {
+      const f: DocumentoAEmitir = {
+        ...facturaValida(),
+        moneda: 'EUR',
+        rateBcv: '44.00',
+        lineas: [{ descripcion: 'Servicio', cantidad: '1', precioUnitario: '100', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+        impuestos: [{ alicuotaCodigo: 'GENERAL', alicuotaTasa: '16', base: '100', monto: '16' }],
+        total: '116.00',
+        totalVes: '4000.00', // ≠ 116 × 44 = 5104
+      };
+      expect(codigos(validarRequisitosFactura(f))).toContain('DIVISA_CONTRAVALOR_INCOHERENTE');
+    });
+  });
+
   it('los documentos no fiscales (presupuesto) no se validan como factura', () => {
     const f: DocumentoAEmitir = { ...facturaValida(), tipo: 'PRESUPUESTO', emisor: { razonSocial: null, rif: null, domicilioFiscal: null } };
     expect(validarRequisitosFactura(f)).toEqual([]);

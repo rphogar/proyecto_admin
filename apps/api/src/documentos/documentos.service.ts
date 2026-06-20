@@ -379,6 +379,7 @@ function construirProyeccion(
       descripcion: l.descripcion,
       cantidad: l.cantidad,
       precioUnitario: l.precioUnitarioOrigen,
+      descuento: l.descuentoOrigen ?? null,
       alicuotaCodigo: l.alicuotaCodigo as AlicuotaCodigo,
       alicuotaTasa: l.alicuotaTasa,
     })),
