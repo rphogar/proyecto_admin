@@ -51,9 +51,33 @@ export type {
   ResultadoRetencionIslr,
 } from './retenciones/retencion-islr';
 
+// P22 — Tabla 1.808 completa y parametrizable (conceptos con tarifa PN/PJ + sustraendo; docs/02 §4;
+// caso 31). El catálogo vive en parámetros (regla 17); el resolver compone calcularRetencionIslr.
+export { calcularRetencion1808, resolverConcepto1808, TABLA_1808_DEFECTO } from './retenciones/tabla-1808';
+export type {
+  TipoPersonaIslr,
+  ConceptoIslr1808,
+  Tabla1808,
+  RetencionPorConceptoInput,
+  ResultadoRetencion1808,
+} from './retenciones/tabla-1808';
+
+// P22 — Base de retención de ISLR en pagos mixtos servicio+materiales (caso 32, configurable por línea).
+export { baseIslrDeLineas } from './retenciones/base-islr-lineas';
+export type { LineaIslr, ResultadoBaseIslr } from './retenciones/base-islr-lineas';
+
+// P22 — Evaluación pre-registro de factura de compra: 100% / crédito no deducible + alertas (caso 29).
+export { evaluarFacturaCompra } from './retenciones/evaluar-factura-compra';
+export type { FacturaCompraAEvaluar, EvaluacionFacturaCompra } from './retenciones/evaluar-factura-compra';
+
+// P22 — Consolidación del ARC anual de ISLR a un sujeto retenido (docs/02 §4).
+export { consolidarArcIslr } from './retenciones/arc-islr';
+export type { FilaArcIslr, TotalConceptoArc, TotalMesArc, ResultadoArcIslr } from './retenciones/arc-islr';
+
 // P9 — Numeración normada del comprobante de retención (AAAAMMNNNNNNNN) y TXT del portal SENIAT.
 export { formatearNumeroComprobante, parsearNumeroComprobante } from './retenciones/comprobante-numero';
 export type { PeriodoComprobante, ComprobanteParseado } from './retenciones/comprobante-numero';
+// P22 — TXT endurecido (17 columnas: período, % retención, comprobante; golden byte a byte, caso 33).
 export { generarTxtRetencionIva } from './retenciones/txt-retencion-iva';
 export type {
   TipoDocumentoTxt,

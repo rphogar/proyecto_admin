@@ -1,4 +1,5 @@
 import {
+  baseIslrDeLineas,
   calcularRetencionIva,
   calcularRetencionIslr,
   type PorcentajeRetencionIva,
@@ -68,6 +69,13 @@ export interface RetencionIslrParams {
   readonly sustraendo?: string | null;
   /** Base gravada por el concepto en moneda origen; default = base imponible total del documento. */
   readonly base?: string | null;
+  /**
+   * Marca por línea (alineada con `lineas`) de cuáles están sujetas a la retención de ISLR del
+   * concepto (caso 32: solo la porción de servicio). Si se omite `base` y se pasa esto, la base de
+   * ISLR se obtiene sumando las líneas marcadas; si ninguna se marca, se usa el total (conservador,
+   * TODO-TRIBUTARISTA). `base` explícito tiene prioridad.
+   */
+  readonly lineasSujetas?: ReadonlyArray<boolean>;
 }
 
 export interface BorradorCompra {
@@ -91,7 +99,11 @@ export interface RetencionCalculada {
 export interface CompraCalculada {
   readonly documento: DocumentoCalculado;
   readonly retencionIva: RetencionCalculada;
-  readonly retencionIslr: RetencionCalculada & { readonly concepto: string | null };
+  readonly retencionIslr: RetencionCalculada & {
+    readonly concepto: string | null;
+    /** true si la base de ISLR se tomó del total por falta de discriminación por línea (caso 32). */
+    readonly baseSinDiscriminar: boolean;
+  };
   /** Neto a pagar al proveedor (total − retenciones) en triple base. */
   readonly netoProveedor: Triple;
 }
@@ -136,9 +148,26 @@ export function calcularCompra(borrador: BorradorCompra): CompraCalculada {
   }
 
   // ── Retención de ISLR (por concepto, con sustraendo) ──
-  let retIslr: RetencionCalculada & { concepto: string | null } = { ...SIN_RETENCION, concepto: null };
+  let retIslr: RetencionCalculada & { concepto: string | null; baseSinDiscriminar: boolean } = {
+    ...SIN_RETENCION,
+    concepto: null,
+    baseSinDiscriminar: false,
+  };
   if (borrador.retencionIslr?.aplica === true) {
-    const baseIslr = borrador.retencionIslr.base != null ? new Decimal(borrador.retencionIslr.base) : baseTotalOrigen;
+    // Base de ISLR: explícita > por línea (caso 32) > total del documento.
+    let baseIslr: Decimal;
+    let baseSinDiscriminar = false;
+    if (borrador.retencionIslr.base != null) {
+      baseIslr = new Decimal(borrador.retencionIslr.base);
+    } else if (borrador.retencionIslr.lineasSujetas !== undefined) {
+      const filas = documento.lineas.map((l, i) => ({ base: l.baseOrigen, sujetoIslr: borrador.retencionIslr!.lineasSujetas![i] === true }));
+      const rb = baseIslrDeLineas(filas);
+      baseIslr = new Decimal(rb.base);
+      baseSinDiscriminar = rb.usoTotalPorFaltaDeDiscriminacion;
+    } else {
+      baseIslr = baseTotalOrigen;
+      baseSinDiscriminar = true;
+    }
     const r = calcularRetencionIslr({
       base: baseIslr.toFixed(),
       tarifa: borrador.retencionIslr.tarifa,
@@ -152,6 +181,7 @@ export function calcularCompra(borrador: BorradorCompra): CompraCalculada {
       sustraendo: expandir(new Decimal(r.sustraendo), moneda, rateBcv, rateUsdMgmt),
       monto: expandir(monto, moneda, rateBcv, rateUsdMgmt),
       concepto: borrador.retencionIslr.concepto,
+      baseSinDiscriminar,
     };
   }
 

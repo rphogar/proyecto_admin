@@ -1,10 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  evaluarFacturaCompra,
   formatearNumeroComprobante,
   generarTxtRetencionIva,
-  porcentajeRetencionIva,
+  type LineaRetencionIvaTxt,
   type TipoDocumentoTxt,
+  type TipoPersonaIslr,
 } from '@contave/fiscal-engine';
 import { Asiento, postear } from '@contave/ledger';
 import { Decimal, fechaFiscal, periodoFiscal } from '@contave/shared';
@@ -43,6 +45,7 @@ import {
   type RetencionIslrParams,
 } from './calculo-compra';
 import { parseLineas } from './dto';
+import { resolverRetencionIslrTabla } from './resolver-islr';
 
 const TIPOS_DOC_PROVEEDOR = ['FACTURA', 'NOTA_DEBITO', 'NOTA_CREDITO'] as const;
 /** Tipo de operación de una compra (exportación no aplica a compras). */
@@ -73,14 +76,24 @@ export interface EntradaCompra {
   lineas: BorradorCompra['lineas'];
   /** Forzar 100% por incumplimientos de la factura (Prov. 0049): no discrimina IVA, sin control. */
   forzarRetencion100: boolean;
-  /** Concepto ISLR (si aplica retención de ISLR): honorarios, servicios… */
+  /** La factura discrimina el IVA por alícuota (requisito 00071; caso 29). Default true. */
+  discriminaIva: boolean;
+  /** RIF del proveedor inconsistente/no inscrito → fuerza 100% (Prov. 0049; caso 29). */
+  rifInconsistente: boolean;
+  /** Concepto ISLR (si aplica retención de ISLR): honorarios, servicios… (etiqueta libre). */
   conceptoIslr: string | null;
-  /** Tarifa ISLR en % (parámetro tabla 1.808). */
+  /** Código de concepto de la tabla 1.808 (resuelve tarifa/sustraendo del parámetro; alternativa a tarifaIslr). */
+  conceptoIslrCodigo: string | null;
+  /** Tipo de persona del retenido para la tabla 1.808 (PN_RESIDENTE | PJ_DOMICILIADA). */
+  tipoPersonaIslr: TipoPersonaIslr | null;
+  /** Tarifa ISLR en % (si se pasa, tiene prioridad sobre la tabla 1.808). */
   tarifaIslr: string | null;
   /** Sustraendo ISLR en moneda origen (PN residente); null = 0. */
   sustraendoIslr: string | null;
-  /** Base gravada por el concepto ISLR (caso 32); null = base imponible total. */
+  /** Base gravada por el concepto ISLR (caso 32); null = base imponible total o por línea. */
   baseIslr: string | null;
+  /** Marca por línea de sujeción a ISLR (caso 32: porción de servicio). Alineada con `lineas`. */
+  lineasSujetasIslr: boolean[];
 }
 
 function parseCompra(body: unknown): EntradaCompra {
@@ -111,10 +124,15 @@ function parseCompra(body: unknown): EntradaCompra {
     exchangeRateId: optionalUuid(b.exchangeRateId, 'exchangeRateId'),
     lineas: parseLineas(b.lineas),
     forzarRetencion100: b.forzarRetencion100 === true,
+    discriminaIva: b.discriminaIva !== false && b.forzarRetencion100 !== true,
+    rifInconsistente: b.rifInconsistente === true,
     conceptoIslr: optionalString(b.conceptoIslr, 'conceptoIslr', 60),
+    conceptoIslrCodigo: optionalString(b.conceptoIslrCodigo, 'conceptoIslrCodigo', 20),
+    tipoPersonaIslr: parseTipoPersona(b.tipoPersonaIslr),
     tarifaIslr: optionalDecimal(b.tarifaIslr, 'tarifaIslr'),
     sustraendoIslr: optionalDecimal(b.sustraendoIslr, 'sustraendoIslr'),
     baseIslr: optionalDecimal(b.baseIslr, 'baseIslr'),
+    lineasSujetasIslr: (b.lineas as unknown[]).map((l) => asRecord(l).sujetoIslr === true),
   };
 }
 
@@ -123,12 +141,24 @@ function requireEnumOpt<T extends string>(valor: unknown, campo: string, permiti
   return requireEnum(valor, campo, permitidos, (s) => s.toUpperCase());
 }
 
+const TIPOS_PERSONA_ISLR = ['PN_RESIDENTE', 'PJ_DOMICILIADA'] as const;
+
+/** Parsea el tipo de persona para la tabla 1.808 (opcional). */
+function parseTipoPersona(valor: unknown): TipoPersonaIslr | null {
+  if (valor === undefined || valor === null || String(valor).trim() === '') return null;
+  return requireEnum(valor, 'tipoPersonaIslr', TIPOS_PERSONA_ISLR, (s) => s.toUpperCase());
+}
+
 /** Compra registrada con su detalle y los comprobantes de retención emitidos. */
 export interface CompraRegistrada {
   compra: typeof purchases.$inferSelect;
   lineas: (typeof purchaseLines.$inferSelect)[];
   impuestos: (typeof purchaseTaxes.$inferSelect)[];
   retenciones: (typeof retentionsIssued.$inferSelect)[];
+  /** El crédito fiscal de IVA es deducible (factura cumple requisitos 00071; caso 29). */
+  creditoFiscalDeducible: boolean;
+  /** Alertas no bloqueantes (caso 29: 100%/no deducible; caso 32: ISLR sobre el total sin discriminar). */
+  alertas: string[];
 }
 
 /**
@@ -162,20 +192,44 @@ export class ComprasService {
       // ── Resolución de las retenciones a aplicar (la empresa debe ser agente = SPE) ──
       const esAgente = company.spe;
       const aplicaRetIva = esAgente && tieneIva(e.lineas);
-      const pctIva = porcentajeRetencionIva({
+      // Evaluación 00071/0049 (caso 29): % de retención + deducibilidad del crédito fiscal + alertas.
+      const evaluacion = evaluarFacturaCompra({
+        discriminaIva: e.discriminaIva,
+        numeroControl: e.numeroControl,
+        rifInconsistente: e.rifInconsistente,
         pctProveedor: proveedor.pctRetencionIva,
-        sinNumeroControl: e.numeroControl.trim() === '',
-        rifInconsistente: false,
-        noDiscriminaIva: e.forzarRetencion100,
       });
-      const aplicaRetIslr = esAgente && e.conceptoIslr !== null && e.tarifaIslr !== null;
+      const pctIva = evaluacion.pctRetencionIva;
+      const alertas = [...evaluacion.alertas];
+
+      // Tarifa/sustraendo: explícitos (prioridad) o resueltos de la tabla 1.808 parametrizable (P22).
+      let conceptoIslrLabel = e.conceptoIslr;
+      let tarifaIslr = e.tarifaIslr;
+      let sustraendoIslr = e.sustraendoIslr;
+      if (esAgente && e.tarifaIslr === null && e.conceptoIslrCodigo !== null && e.tipoPersonaIslr !== null) {
+        if (e.moneda !== 'VES') {
+          throw new BadRequestException(
+            'La resolución por tabla 1.808 deriva el sustraendo en Bs; para documentos en divisa pase tarifaIslr/sustraendoIslr explícitos',
+          );
+        }
+        const resuelta = await resolverRetencionIslrTabla(tx, fechaFiscal(e.fechaDocumento), {
+          conceptoCodigo: e.conceptoIslrCodigo,
+          tipoPersona: e.tipoPersonaIslr,
+        });
+        conceptoIslrLabel = conceptoIslrLabel ?? resuelta.concepto;
+        tarifaIslr = resuelta.tarifa;
+        sustraendoIslr = resuelta.sustraendoVes;
+      }
+
+      const aplicaRetIslr = esAgente && conceptoIslrLabel !== null && tarifaIslr !== null;
       const retIslrParams: RetencionIslrParams | undefined = aplicaRetIslr
         ? {
             aplica: true,
-            concepto: e.conceptoIslr as string,
-            tarifa: e.tarifaIslr as string,
-            sustraendo: e.sustraendoIslr,
-            base: e.baseIslr,
+            concepto: conceptoIslrLabel as string,
+            tarifa: tarifaIslr as string,
+            sustraendo: sustraendoIslr,
+            // base explícita > marcas por línea (caso 32) > total del documento.
+            ...(e.baseIslr !== null ? { base: e.baseIslr } : { lineasSujetas: e.lineasSujetasIslr }),
           }
         : undefined;
 
@@ -189,6 +243,9 @@ export class ComprasService {
         ...(retIslrParams ? { retencionIslr: retIslrParams } : {}),
       };
       const calc = calcularCompra(borrador);
+      if (calc.retencionIslr.aplica && calc.retencionIslr.baseSinDiscriminar) {
+        alertas.push('Retención de ISLR calculada sobre el TOTAL: la factura no discrimina servicio vs. materiales (caso 32, revisar con tributarista).');
+      }
 
       // ── Período abierto + asiento POSTED ──
       const { anio, mes } = periodoFiscal(e.fechaDocumento);
@@ -224,6 +281,10 @@ export class ComprasService {
       const ivaOrigen = calc.documento.impuestos.reduce((a, t) => a.plus(t.montoOrigen), new Decimal(0));
       const ivaVes = calc.documento.impuestos.reduce((a, t) => a.plus(t.montoVes), new Decimal(0));
       const ivaUsd = calc.documento.impuestos.reduce((a, t) => a.plus(t.montoUsdMgmt), new Decimal(0));
+      // Compras sin derecho a crédito (exento/exonerado) para la columna del TXT del portal.
+      const exentoVes = calc.documento.impuestos
+        .filter((t) => t.alicuotaCodigo === 'EXENTO' || t.alicuotaCodigo === 'EXONERADO')
+        .reduce((a, t) => a.plus(t.baseVes), new Decimal(0));
 
       const hash = createHash('sha256')
         .update(
@@ -346,24 +407,23 @@ export class ComprasService {
             montoOrigen: calc.retencionIva.monto.origen,
             montoVes: calc.retencionIva.monto.ves,
             conceptoIslr: null,
-            // Línea TXT del portal (consolidada por documento; ver TODO en txt-retencion-iva).
-            txtExport: generarTxtRetencionIva([
-              {
-                rifAgente: company.rif,
-                rifRetenido: proveedor.rif,
-                numeroComprobante: '', // se rellena tras conocer el número.
-                fechaDocumento: fFiscal,
-                tipoDocumento: TIPO_DOC_TXT[e.tipoDocumento],
-                numeroDocumento: e.numeroDocumento,
-                numeroControl: e.numeroControl,
-                numeroDocumentoAfectado: e.numeroDocumentoAfectado,
-                totalCompraConIva: totales.totalVes,
-                baseImponible: baseVes.toFixed(2),
-                alicuota: alicuotaPrincipal(calc),
-                impuestoIva: ivaVes.toFixed(2),
-                ivaRetenido: calc.retencionIva.monto.ves,
-              },
-            ]),
+            // Datos de la línea TXT del portal (el número de comprobante se inyecta al emitir).
+            txtLinea: {
+              rifAgente: company.rif,
+              rifRetenido: proveedor.rif,
+              fechaDocumento: fFiscal,
+              tipoDocumento: TIPO_DOC_TXT[e.tipoDocumento],
+              numeroDocumento: e.numeroDocumento,
+              numeroControl: e.numeroControl,
+              numeroDocumentoAfectado: e.numeroDocumentoAfectado,
+              totalCompraConIva: totales.totalVes,
+              comprasSinCredito: exentoVes.toFixed(2),
+              baseImponible: baseVes.toFixed(2),
+              alicuota: alicuotaPrincipal(calc),
+              impuestoIva: ivaVes.toFixed(2),
+              ivaRetenido: calc.retencionIva.monto.ves,
+              porcentajeRetencion: calc.retencionIva.porcentaje,
+            },
           }),
         );
       }
@@ -387,14 +447,14 @@ export class ComprasService {
             montoOrigen: calc.retencionIslr.monto.origen,
             montoVes: calc.retencionIslr.monto.ves,
             conceptoIslr: calc.retencionIslr.concepto,
-            txtExport: null,
+            txtLinea: null,
           }),
         );
       }
 
       await this.audit.registrar(tx, { accion: 'compra.create', entidad: 'purchases', entidadId: purchaseId, after: compra });
 
-      return { compra, lineas, impuestos, retenciones };
+      return { compra, lineas, impuestos, retenciones, creditoFiscalDeducible: evaluacion.creditoFiscalDeducible, alertas };
     });
   }
 
@@ -410,8 +470,8 @@ export class ComprasService {
   private async emitirComprobante(tx: DatabaseTx, p: ComprobanteParams): Promise<typeof retentionsIssued.$inferSelect> {
     const correlativo = await siguienteCorrelativo(tx, p.company.id, p.tipo, p.anio, p.mes);
     const numero = formatearNumeroComprobante({ anio: p.anio, mes: p.mes }, correlativo);
-    // El TXT lleva el número de comprobante ya asignado.
-    const txt = p.txtExport === null ? null : p.txtExport.replace(/^(\S+\t\S+\t)\t/, `$1${numero}\t`);
+    // El TXT del portal se genera con el número de comprobante ya asignado (sin parches de texto).
+    const txt = p.txtLinea === null ? null : generarTxtRetencionIva([{ ...p.txtLinea, numeroComprobante: numero }]);
     const hash = createHash('sha256')
       .update(JSON.stringify({ companyId: p.company.id, tipo: p.tipo, numero, purchaseId: p.purchaseId, montoVes: p.montoVes }))
       .digest('hex');
@@ -468,7 +528,8 @@ interface ComprobanteParams {
   montoOrigen: string;
   montoVes: string;
   conceptoIslr: string | null;
-  txtExport: string | null;
+  /** Datos de la línea del TXT del portal (solo IVA); el número de comprobante se inyecta al emitir. */
+  txtLinea: Omit<LineaRetencionIvaTxt, 'numeroComprobante'> | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

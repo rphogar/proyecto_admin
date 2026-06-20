@@ -1,0 +1,53 @@
+{
+  "_doc": "Golden del TXT de retenciones de IVA del portal SENIAT (Providencia 0049). Caso 33 del doc 07: archivo de ejemplo ANONIMIZADO; el contenido de `esperado` es la salida exacta byte a byte (campos TAB, líneas CRLF, montos con coma decimal, fecha DD/MM/AAAA, período AAAAMM). TODO-TRIBUTARISTA: reemplazar por un archivo real del portal cuando se disponga; un rechazo del portal = soporte crítico.",
+  "_lote": "Quincena 2026-06 de un agente SPE: factura al 75%, factura al 100% (RIF inconsistente) y nota de crédito (tipo 03) que afecta a la primera factura.",
+  "input": [
+    {
+      "rifAgente": "J-31556784-0",
+      "rifRetenido": "J-29887766-1",
+      "numeroComprobante": "20260600000001",
+      "fechaDocumento": "2026-06-03",
+      "tipoDocumento": "01",
+      "numeroDocumento": "00012345",
+      "numeroControl": "00-00045678",
+      "totalCompraConIva": "11600.00",
+      "baseImponible": "10000.00",
+      "alicuota": "16",
+      "impuestoIva": "1600.00",
+      "ivaRetenido": "1200.00",
+      "porcentajeRetencion": "75"
+    },
+    {
+      "rifAgente": "J-31556784-0",
+      "rifRetenido": "V-13458899-0",
+      "numeroComprobante": "20260600000002",
+      "fechaDocumento": "2026-06-07",
+      "tipoDocumento": "01",
+      "numeroDocumento": "000789",
+      "numeroControl": "00-00099001",
+      "totalCompraConIva": "4640.00",
+      "baseImponible": "4000.00",
+      "alicuota": "16",
+      "impuestoIva": "640.00",
+      "ivaRetenido": "640.00",
+      "porcentajeRetencion": "100"
+    },
+    {
+      "rifAgente": "J-31556784-0",
+      "rifRetenido": "J-29887766-1",
+      "numeroComprobante": "20260600000003",
+      "fechaDocumento": "2026-06-12",
+      "tipoDocumento": "03",
+      "numeroDocumento": "00000099",
+      "numeroControl": "00-00045999",
+      "numeroDocumentoAfectado": "00012345",
+      "totalCompraConIva": "1160.00",
+      "baseImponible": "1000.00",
+      "alicuota": "16",
+      "impuestoIva": "160.00",
+      "ivaRetenido": "120.00",
+      "porcentajeRetencion": "75"
+    }
+  ],
+  "esperado": "J-31556784-0\t202606\tJ-29887766-1\t20260600000001\t03/06/2026\t01\t01\t00012345\t00-00045678\t\t11600,00\t0,00\t10000,00\t16\t1600,00\t1200,00\t75\r\nJ-31556784-0\t202606\tV-13458899-0\t20260600000002\t07/06/2026\t01\t01\t000789\t00-00099001\t\t4640,00\t0,00\t4000,00\t16\t640,00\t640,00\t100\r\nJ-31556784-0\t202606\tJ-29887766-1\t20260600000003\t12/06/2026\t01\t03\t00000099\t00-00045999\t00012345\t1160,00\t0,00\t1000,00\t16\t160,00\t120,00\t75"
+}

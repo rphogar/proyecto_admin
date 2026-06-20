@@ -156,6 +156,75 @@ describe('Compras y retenciones — integración DB (P9)', () => {
     expect(lineas.find((l) => l.codigo === '2.3.04')?.dc).toBe('C');
   });
 
+  it('caso 29 — factura que no discrimina el IVA: retiene 100% y marca crédito no deducible + alerta', async () => {
+    const res = await como(tenantA, () =>
+      compras.registrar({
+        companyId: companyA,
+        partyId: prov75, // proveedor 75, pero la factura incumple → 100%
+        numeroDocumento: 'ND-029',
+        numeroControl: '00-0029',
+        moneda: 'VES',
+        rateUsdMgmt: '40',
+        fechaDocumento: FECHA,
+        discriminaIva: false,
+        lineas: [{ descripcion: 'Mercancía', cantidad: '1', precioUnitarioOrigen: '1000', alicuotaCodigo: 'GENERAL', alicuotaTasa: '16' }],
+      }),
+    );
+    expect(res.compra.retencionIvaVes).toBe('160.00000000'); // 100%
+    expect(res.creditoFiscalDeducible).toBe(false);
+    expect(res.alertas.join(' ')).toMatch(/no discrimina/i);
+  });
+
+  it('caso 32 — pago mixto: retiene ISLR solo sobre la línea de servicio marcada', async () => {
+    const res = await como(tenantA, () =>
+      compras.registrar({
+        companyId: companyA,
+        partyId: provPN,
+        numeroDocumento: 'MIX-032',
+        numeroControl: '00-0032',
+        moneda: 'VES',
+        rateUsdMgmt: '40',
+        fechaDocumento: FECHA,
+        cuentaDestino: '6.2',
+        conceptoIslr: 'Servicios',
+        tarifaIslr: '1',
+        // sin baseIslr explícita → se toma de las líneas marcadas (caso 32).
+        lineas: [
+          { descripcion: 'Mano de obra', cantidad: '1', precioUnitarioOrigen: '3000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0', sujetoIslr: true },
+          { descripcion: 'Materiales', cantidad: '1', precioUnitarioOrigen: '7000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0', sujetoIslr: false },
+        ],
+      }),
+    );
+    const islr = res.retenciones.find((r) => r.tipo === 'ISLR');
+    // Base 3.000 × 1% = 30 (solo el servicio); materiales fuera de la base.
+    expect(islr?.baseVes).toBe('3000.00000000');
+    expect(islr?.montoVes).toBe('30.00000000');
+  });
+
+  it('tabla 1.808 — resuelve tarifa/sustraendo por concepto+persona (sin pasar tarifa): honorarios PN → 277,50', async () => {
+    const res = await como(tenantA, () =>
+      compras.registrar({
+        companyId: companyA,
+        partyId: provPN,
+        numeroDocumento: 'T1808-1',
+        numeroControl: '00-1808',
+        moneda: 'VES',
+        rateUsdMgmt: '40',
+        fechaDocumento: FECHA,
+        cuentaDestino: '6.2',
+        conceptoIslrCodigo: '001', // honorarios profesionales
+        tipoPersonaIslr: 'PN_RESIDENTE',
+        // sin tarifaIslr ni sustraendoIslr: se resuelven de la tabla y la UT (default 9 → sustraendo 22,50).
+        lineas: [{ descripcion: 'Honorarios', cantidad: '1', precioUnitarioOrigen: '10000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0' }],
+      }),
+    );
+    const islr = res.retenciones.find((r) => r.tipo === 'ISLR');
+    expect(islr?.montoVes).toBe('277.50000000');
+    expect(islr?.porcentaje).toBe('3.00');
+    expect(islr?.sustraendoVes).toBe('22.50000000');
+    expect(islr?.conceptoIslr).toBe('Honorarios profesionales');
+  });
+
   it('comprobante recibido (caso 26 lado vendedor / caso 28 imputación): D 1.3.02, C Clientes', async () => {
     const res = await como(tenantA, () =>
       recibidas.registrar({

@@ -5,6 +5,7 @@ import { type AnticipoBorrador, type DeclaracionIgtfBorrador, DeclaracionesServi
 import { generarLibroExcel } from './export/libro-excel';
 import { generarLibroPdf } from './export/libro-pdf';
 import { type Libro, LibrosService } from './libros.service';
+import { type ArcProveedor, type ControlFacturasAspe, RetencionesControlService } from './retenciones-control.service';
 import type { taxReturns } from '../db/schema';
 
 /**
@@ -18,6 +19,7 @@ export class ImpuestosController {
   constructor(
     private readonly libros: LibrosService,
     private readonly declaraciones: DeclaracionesService,
+    private readonly control: RetencionesControlService,
   ) {}
 
   // ── Libros ──────────────────────────────────────────────────────────────────
@@ -96,6 +98,25 @@ export class ImpuestosController {
     if (!Number.isInteger(anio)) throw new BadRequestException('anio es obligatorio y debe ser entero');
     if (!Array.isArray(body.entradas)) throw new BadRequestException('entradas debe ser un arreglo');
     return this.declaraciones.importarCalendarioSpe(anio, body.entradas as EntradaCalendarioSpe[]);
+  }
+
+  // ── Control de retenciones (caso 28) y ARC anual de ISLR ─────────────────────
+  /** Facturas a clientes SPE sin comprobante de retención recibido (atrasadas > umbralDias, caso 28). */
+  @Get('retenciones/control-spe')
+  async controlFacturasAspe(@Query() q: Record<string, string>): Promise<ControlFacturasAspe> {
+    if (!q.companyId) throw new BadRequestException('companyId es obligatorio');
+    const umbral = q.dias == null || q.dias === '' ? undefined : Number(q.dias);
+    if (umbral !== undefined && !Number.isInteger(umbral)) throw new BadRequestException('dias debe ser entero');
+    return this.control.facturasAspeSinComprobante(q.companyId, umbral);
+  }
+
+  /** ARC anual de ISLR por proveedor de un ejercicio (opcional partyId para uno solo). */
+  @Get('retenciones/arc-islr')
+  async arcIslr(@Query() q: Record<string, string>): Promise<ArcProveedor[]> {
+    if (!q.companyId) throw new BadRequestException('companyId es obligatorio');
+    const ejercicio = Number(q.ejercicio);
+    if (!Number.isInteger(ejercicio)) throw new BadRequestException('ejercicio es obligatorio y debe ser entero');
+    return this.control.arcIslrProveedores(q.companyId, ejercicio, q.partyId ?? null);
   }
 
   @Get('declaraciones')

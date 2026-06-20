@@ -82,6 +82,35 @@ describe('calcularCompra — retención de ISLR (caso 31)', () => {
     expect(a.lineas.some((l) => l.cuenta === '2.3.04' && l.dc === 'C')).toBe(true);
   });
 
+  it('caso 32 — pago mixto: retiene ISLR solo sobre la línea de servicio discriminada', () => {
+    const b = compraBase({
+      lineas: [
+        { descripcion: 'Mano de obra', cantidad: '1', precioUnitarioOrigen: '3000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0' },
+        { descripcion: 'Materiales', cantidad: '1', precioUnitarioOrigen: '7000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0' },
+      ],
+      retencionIslr: { aplica: true, concepto: 'Servicios', tarifa: '2', sustraendo: '0', lineasSujetas: [true, false] },
+    });
+    const { calc } = asiento(b);
+    // Base ISLR = solo 3.000 (servicio) × 2% = 60; no toca los 7.000 de materiales.
+    expect(calc.retencionIslr.base.ves).toBe('3000.00');
+    expect(calc.retencionIslr.monto.ves).toBe('60.00');
+    expect(calc.retencionIslr.baseSinDiscriminar).toBe(false);
+  });
+
+  it('caso 32 — sin discriminar: retiene sobre el total y marca la advertencia', () => {
+    const b = compraBase({
+      lineas: [
+        { descripcion: 'Mano de obra', cantidad: '1', precioUnitarioOrigen: '3000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0' },
+        { descripcion: 'Materiales', cantidad: '1', precioUnitarioOrigen: '7000', alicuotaCodigo: 'EXENTO', alicuotaTasa: '0' },
+      ],
+      retencionIslr: { aplica: true, concepto: 'Servicios', tarifa: '2', sustraendo: '0', lineasSujetas: [false, false] },
+    });
+    const { calc } = asiento(b);
+    expect(calc.retencionIslr.base.ves).toBe('10000.00');
+    expect(calc.retencionIslr.monto.ves).toBe('200.00');
+    expect(calc.retencionIslr.baseSinDiscriminar).toBe(true);
+  });
+
   it('IVA + ISLR juntos: ambos pasivos por enterar y asiento cuadrado', () => {
     const b = compraBase({
       retencionIva: { aplica: true, porcentaje: 75 },

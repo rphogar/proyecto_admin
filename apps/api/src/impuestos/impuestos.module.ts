@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DeclaracionesService } from './declaraciones.service';
 import { ImpuestosController } from './impuestos.controller';
 import { LibrosService } from './libros.service';
+import { RetencionesControlService } from './retenciones-control.service';
 
 /**
  * Módulo de Impuestos (P10, docs/06 M7, docs/02 §7.2/§3.2/§5): genera los Libros de Compras/Ventas
@@ -12,7 +13,7 @@ import { LibrosService } from './libros.service';
  */
 @Module({
   controllers: [ImpuestosController],
-  providers: [LibrosService, DeclaracionesService],
-  exports: [LibrosService, DeclaracionesService],
+  providers: [LibrosService, DeclaracionesService, RetencionesControlService],
+  exports: [LibrosService, DeclaracionesService, RetencionesControlService],
 })
 export class ImpuestosModule {}
