@@ -1,8 +1,12 @@
 'use client';
 
-import type { EstadoFrescura } from '@contave/shared';
-import { useQuery } from '@tanstack/react-query';
-import { fetchTasaDelDia, type TasaDelDiaDto } from '@/lib/api';
+import { type EstadoFrescura, fechaFiscal } from '@contave/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { crearTasaManual, fetchTasaDelDia, type TasaDelDiaDto } from '@/lib/api';
+import { useEmpresaActiva } from '@/lib/empresa-activa';
 
 /** Mensaje del banner según el rezago de la tasa (caso 57). */
 const MENSAJE_FRESCURA: Record<Exclude<EstadoFrescura, 'fresca'>, string> = {
@@ -68,11 +72,109 @@ export function TasaDelDiaVista({ data, isLoading, isError }: VistaProps) {
   );
 }
 
-/** Contenedor: obtiene la tasa con TanStack Query y delega en la vista. */
+/**
+ * Carga MANUAL de tasa (fallback del caso 57: el BCV no publicó o el job no corrió). Plegable:
+ * solo aparece bajo demanda para no estorbar cuando la tasa automática está fresca. Requiere sesión
+ * activa (la API exige contexto de tenant); al guardar, refresca la "tasa del día".
+ */
+function FormularioTasaManual({ moneda }: { moneda: string }) {
+  const queryClient = useQueryClient();
+  const { sesion } = useEmpresaActiva();
+  const [abierto, setAbierto] = useState(false);
+  const [rate, setRate] = useState('');
+  const [rateDate, setRateDate] = useState('');
+  const [motivo, setMotivo] = useState('');
+
+  // Prefill de la fecha en el cliente (evita desajuste SSR con la fecha de Caracas).
+  useEffect(() => {
+    setRateDate(fechaFiscal(new Date()));
+  }, []);
+
+  const mutacion = useMutation({
+    mutationFn: () => crearTasaManual({ moneda, rate, rateDate, motivo }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tasa-dia'] });
+      setRate('');
+      setMotivo('');
+      setAbierto(false);
+    },
+  });
+
+  if (sesion === null) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Entra a una empresa para cargar una tasa manual.
+      </p>
+    );
+  }
+
+  if (!abierto) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => setAbierto(true)}>
+        Cargar tasa manual
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-2 rounded-md border p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        mutacion.mutate();
+      }}
+    >
+      <label className="text-xs text-muted-foreground">
+        Tasa (Bs por {moneda})
+        <Input
+          inputMode="decimal"
+          value={rate}
+          onChange={(e) => setRate(e.target.value)}
+          placeholder="40.50000000"
+          required
+        />
+      </label>
+      <label className="text-xs text-muted-foreground">
+        Vigente desde
+        <Input type="date" value={rateDate} onChange={(e) => setRateDate(e.target.value)} required />
+      </label>
+      <label className="text-xs text-muted-foreground">
+        Motivo (obligatorio, auditado)
+        <Input
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          placeholder="BCV no publicó; tasa tomada de…"
+          minLength={3}
+          required
+        />
+      </label>
+      {mutacion.isError && (
+        <p role="alert" className="text-xs text-destructive">
+          {mutacion.error instanceof Error ? mutacion.error.message : 'No se pudo guardar la tasa.'}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={mutacion.isPending}>
+          {mutacion.isPending ? 'Guardando…' : 'Guardar'}
+        </Button>
+        <Button size="sm" type="button" variant="ghost" onClick={() => setAbierto(false)}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Contenedor: obtiene la tasa con TanStack Query, delega en la vista y ofrece la carga manual. */
 export function TasaDelDia({ moneda = 'USD' }: { moneda?: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['tasa-dia', moneda],
     queryFn: () => fetchTasaDelDia(moneda),
   });
-  return <TasaDelDiaVista data={data} isLoading={isLoading} isError={isError} />;
+  return (
+    <div className="flex flex-col gap-2">
+      <TasaDelDiaVista data={data} isLoading={isLoading} isError={isError} />
+      <FormularioTasaManual moneda={moneda} />
+    </div>
+  );
 }

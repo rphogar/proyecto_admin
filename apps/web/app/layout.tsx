@@ -11,7 +11,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      {/*
+        suppressHydrationWarning: extensiones del navegador (Bitdefender/gestores de contraseñas)
+        inyectan atributos en <body> (bis_register, __processed_*) ANTES de que React hidrate,
+        provocando un falso "hydration mismatch". No es un bug de la app; esto silencia ese ruido
+        solo a nivel del <body> sin afectar la detección de desajustes reales en el árbol interno.
+      */}
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-background text-foreground antialiased"
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

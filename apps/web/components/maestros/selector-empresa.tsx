@@ -2,50 +2,53 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { fetchSesionDemo } from '@/lib/dev-api';
 import { useEmpresaActiva } from '@/lib/empresa-activa';
 
 /**
- * Selector de empresa de la barra superior (doc 06, multi-empresa). Provisional: hasta el módulo de
- * empresas (M12) se captura el UUID de la empresa activa, que se persiste en `localStorage` y acota
- * todos los maestros. Se reemplazará por un desplegable poblado desde la API.
+ * Selector de empresa de la barra superior (doc 06, multi-empresa). Provisional: hasta que exista
+ * la auth real (login/JWT/membresías), se entra con un clic a la empresa DEMO sembrada por
+ * `pnpm db:seed-demo` (endpoint `GET /dev/sesion`). Reemplaza al "pegar UUID a mano".
  */
 export function SelectorEmpresa() {
-  const { companyId, setCompanyId } = useEmpresaActiva();
-  const [valor, setValor] = useState('');
+  const { sesion, iniciarSesion, salir } = useEmpresaActiva();
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  if (companyId !== null) {
+  if (sesion !== null) {
     return (
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Empresa:</span>
-        <code className="rounded bg-muted px-2 py-1 text-xs">{companyId}</code>
-        <Button size="sm" variant="ghost" onClick={() => setCompanyId(null)}>
-          Cambiar
+        <span className="font-medium">{sesion.empresaNombre}</span>
+        <Button size="sm" variant="ghost" onClick={salir}>
+          Salir
         </Button>
       </div>
     );
   }
 
+  const entrar = async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      iniciarSesion(await fetchSesionDemo());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo iniciar sesión demo');
+    } finally {
+      setCargando(false);
+    }
+  };
+
   return (
-    <form
-      className="flex items-center gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (valor.trim()) {
-          setCompanyId(valor.trim());
-        }
-      }}
-    >
-      <Input
-        className="w-80"
-        placeholder="UUID de la empresa activa"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        aria-label="UUID de la empresa activa"
-      />
-      <Button size="sm" type="submit">
-        Usar
+    <div className="flex items-center gap-2">
+      <Button size="sm" onClick={entrar} disabled={cargando}>
+        {cargando ? 'Entrando…' : 'Entrar (empresa demo)'}
       </Button>
-    </form>
+      {error !== null && (
+        <span role="alert" className="text-xs text-destructive">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }

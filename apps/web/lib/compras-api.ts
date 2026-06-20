@@ -3,6 +3,7 @@
  * IVA/ISLR en el mismo flujo, comprobantes de retención (PDF/TXT) y comprobantes recibidos. Reusa
  * `ApiError` de los maestros para preservar el cuerpo del error.
  */
+import { cabecerasTenant } from './contexto-sesion';
 import { ApiError } from './maestros-api';
 import type { AlicuotaCodigo, LineaBorradorInput } from './ventas-api';
 
@@ -11,7 +12,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: { 'Content-Type': 'application/json', ...cabecerasTenant(), ...(init?.headers ?? {}) },
   });
   if (!resp.ok) {
     let body: unknown;

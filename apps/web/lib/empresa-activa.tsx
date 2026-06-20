@@ -1,41 +1,76 @@
 'use client';
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import {
+  guardarSesion,
+  leerSesion,
+  limpiarSesion,
+  type SesionActiva,
+} from '@/lib/contexto-sesion';
 
 /**
- * Empresa activa de la sesión (doc 06: "selector de empresa" en la barra superior, multi-empresa).
- * Hasta que exista la API/онboarding de empresas (M12), se persiste el UUID elegido en
- * `localStorage`. Todos los maestros son company-scoped y la cuelgan de aquí.
+ * Sesión/empresa activa (doc 06: "selector de empresa" en la barra superior, multi-empresa).
+ * La sesión (tenant + empresa + usuario) se persiste en `localStorage` (ver `contexto-sesion.ts`)
+ * y de ahí salen las cabeceras `x-tenant-id`/`x-user-id` de cada llamada a la API.
+ *
+ * Compatibilidad: `companyId`/`setCompanyId` se conservan porque ~20 pantallas los consumen.
+ * `setCompanyId(null)` cierra la sesión (logout); la entrada se hace con `iniciarSesion`.
  */
 interface EmpresaActiva {
   companyId: string | null;
   setCompanyId: (id: string | null) => void;
+  sesion: SesionActiva | null;
+  iniciarSesion: (s: SesionActiva) => void;
+  salir: () => void;
 }
 
 const Ctx = createContext<EmpresaActiva | undefined>(undefined);
-const CLAVE = 'contave.companyId';
 
 export function EmpresaActivaProvider({ children }: { children: ReactNode }) {
-  const [companyId, setCompanyIdState] = useState<string | null>(null);
+  const [sesion, setSesion] = useState<SesionActiva | null>(null);
 
   // Hidrata desde localStorage en el cliente (evita desajuste SSR).
   useEffect(() => {
-    const guardado = window.localStorage.getItem(CLAVE);
-    if (guardado) {
-      setCompanyIdState(guardado);
-    }
+    setSesion(leerSesion());
   }, []);
 
-  const setCompanyId = useCallback((id: string | null) => {
-    setCompanyIdState(id);
-    if (id) {
-      window.localStorage.setItem(CLAVE, id);
-    } else {
-      window.localStorage.removeItem(CLAVE);
-    }
+  const iniciarSesion = useCallback((s: SesionActiva) => {
+    guardarSesion(s);
+    setSesion(s);
   }, []);
 
-  return <Ctx.Provider value={{ companyId, setCompanyId }}>{children}</Ctx.Provider>;
+  const salir = useCallback(() => {
+    limpiarSesion();
+    setSesion(null);
+  }, []);
+
+  // Legado: `setCompanyId(null)` = salir. Con un valor, solo cambia la empresa de la sesión actual.
+  const setCompanyId = useCallback(
+    (id: string | null) => {
+      if (id === null) {
+        limpiarSesion();
+        setSesion(null);
+        return;
+      }
+      setSesion((prev) => {
+        if (prev === null) {
+          return prev;
+        }
+        const next = { ...prev, companyId: id };
+        guardarSesion(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  return (
+    <Ctx.Provider
+      value={{ companyId: sesion?.companyId ?? null, setCompanyId, sesion, iniciarSesion, salir }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useEmpresaActiva(): EmpresaActiva {

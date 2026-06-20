@@ -3,6 +3,7 @@
  * (pre-nómina→aprobación→contabilización), recibos PDF, kardex de prestaciones y liquidación
  * (art. 142), provisiones, parafiscales con planillas y ARI/ARC. Reusa `ApiError` de los maestros.
  */
+import { cabecerasTenant } from './contexto-sesion';
 import { ApiError } from './maestros-api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -10,7 +11,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: { 'Content-Type': 'application/json', ...cabecerasTenant(), ...(init?.headers ?? {}) },
   });
   if (!resp.ok) {
     let body: unknown;
@@ -172,7 +173,7 @@ export const nominaApi = {
   listarParafiscales: (companyId: string, anio: number, mes: number) => req<Parafiscal[]>(`/nomina/parafiscales?companyId=${companyId}&anio=${anio}&mes=${mes}`),
   calcularParafiscales: (body: Record<string, unknown>) => req<Parafiscal[]>('/nomina/parafiscales/calcular', { method: 'POST', body: JSON.stringify(body) }),
   descargarPlanilla: async (body: { companyId: string; anio: number; mes: number; regimen: string }) => {
-    const resp = await fetch(`${API_BASE}/nomina/parafiscales/planilla`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const resp = await fetch(`${API_BASE}/nomina/parafiscales/planilla`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...cabecerasTenant() }, body: JSON.stringify(body) });
     if (!resp.ok) throw new ApiError(resp.status, `Error ${resp.status}`, undefined);
     const cd = resp.headers.get('content-disposition') ?? '';
     const match = /filename="([^"]+)"/.exec(cd);
