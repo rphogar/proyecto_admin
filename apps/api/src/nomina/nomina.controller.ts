@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Header, Post, Query, StreamableFile } from '@nestjs/common';
+import { RequierePermiso } from '../seguridad/requiere-permiso.decorator';
 import { type Ari, type Arc, AriArcService } from './ari-arc.service';
 import { type Concepto, ConceptosService } from './conceptos.service';
 import { type Corrida, type CorridaConRecibos, CorridasService } from './corridas.service';
@@ -39,6 +40,7 @@ export class NominaController {
   }
 
   @Get('trabajadores')
+  @RequierePermiso('salary.read')
   listarTrabajadores(@Query('companyId') companyId: string): Promise<Trabajador[]> {
     return this.trabajadores.listar(companyId);
   }
@@ -66,11 +68,13 @@ export class NominaController {
 
   // ── Corridas ──────────────────────────────────────────────────────────────
   @Post('corridas')
+  @RequierePermiso('payroll.create')
   crearCorrida(@Body() body: unknown): Promise<CorridaConRecibos> {
     return this.corridas.crear(body);
   }
 
   @Post('corridas/aprobar')
+  @RequierePermiso('payroll.approve')
   aprobarCorrida(@Body() body: unknown): Promise<Corrida> {
     return this.corridas.aprobar(body);
   }
@@ -86,12 +90,14 @@ export class NominaController {
   }
 
   @Get('corridas/detalle')
+  @RequierePermiso('salary.read')
   detalleCorrida(@Query('companyId') companyId: string, @Query('id') id: string): Promise<CorridaConRecibos> {
     return this.corridas.obtener(id, companyId);
   }
 
   // ── Recibo PDF ──────────────────────────────────────────────────────────────
   @Get('recibos/pdf')
+  @RequierePermiso('salary.read')
   @Header('Content-Type', 'application/pdf')
   async reciboPdf(@Query('companyId') companyId: string, @Query('id') id: string): Promise<StreamableFile> {
     const { buffer, filename } = await this.recibosPdf.generar(companyId, id);
@@ -105,6 +111,7 @@ export class NominaController {
   }
 
   @Get('prestaciones/kardex')
+  @RequierePermiso('salary.read')
   kardex(@Query('companyId') companyId: string, @Query('trabajadorId') trabajadorId: string): Promise<MovimientoKardex[]> {
     return this.prestaciones.kardex(companyId, trabajadorId);
   }

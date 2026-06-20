@@ -400,6 +400,13 @@
       "when": 1781656666022,
       "tag": "0056_seed_cumplimiento_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1781921654749,
+      "tag": "0057_seguridad_2fa_users",
+      "breakpoints": true
     }
   ]
 }

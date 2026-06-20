@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { RequierePermiso } from '../seguridad/requiere-permiso.decorator';
 import { type ManualEntryAttachment, type ResultadoAsientoManual, AsientosManualesService } from './asientos-manuales.service';
 import { type Cierre, type EvaluacionCierre, type Period as PeriodCierre, CierreMensualService } from './cierre-mensual.service';
 import { type Period, PeriodosService } from './periodos.service';
@@ -100,11 +101,13 @@ export class ContabilidadController {
   }
 
   @Post('cierre/cerrar')
+  @RequierePermiso('period.close')
   async cerrar(@Body() body: unknown): Promise<{ cierre: Cierre; period: PeriodCierre }> {
     return this.cierre.cerrar(body);
   }
 
   @Post('cierre/reabrir')
+  @RequierePermiso('period.reopen')
   async reabrir(@Body() body: unknown): Promise<{ cierre: Cierre; period: PeriodCierre }> {
     return this.cierre.reabrir(body);
   }
