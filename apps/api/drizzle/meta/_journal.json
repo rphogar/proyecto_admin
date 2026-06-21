@@ -477,6 +477,13 @@
       "when": 1782007354150,
       "tag": "0067_seed_facturacion_digital_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1782007355150,
+      "tag": "0068_remision_idempotencia_observabilidad",
+      "breakpoints": true
     }
   ]
 }

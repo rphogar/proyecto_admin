@@ -13,12 +13,13 @@
 apps/api/src/cumplimiento/
   cadena-hash.ts            → encadenamiento criptográfico de la bitácora (puro, testeable)
   fiscal-event-log.service  → bitácora fiscal append-only encadenada (emisión/impresión/…/fallos)
-  remision-adapter.ts       → interfaz + stub del canal SENIAT (punto de extensión único)
+  remision-adapter.ts       → contrato + stub + adapter de prueba del canal SENIAT (extensión única)
   backoff.ts                → backoff exponencial de reintentos (puro)
-  remision.service.ts       → cola de remisión: encolar, procesar con reintentos, acuse
+  observabilidad.ts         → estado de la cola + evaluación de alertas (puro, testeable)
+  remision.service.ts       → cola de remisión: encolar idempotente, procesar (envío/acuse), estado
   expediente.service.ts     → expediente técnico de homologación (ficha + arquitectura + informe)
   compliance-report.ts      → este informe, como datos verificados por test
-  cumplimiento.controller   → /cumplimiento/{eventos,remision,informe,expediente}
+  cumplimiento.controller   → /cumplimiento/{eventos,remision,remision/estado,informe,expediente}
 ```
 
 Tablas (docs/05 §3.9): `fiscal_event_log` (append-only, encadenada), `fiscal_transmission_queue`
@@ -38,12 +39,21 @@ cadena y se detecta con `verificarCadena()`.
 
 ### 6.3.2 — Remisión electrónica al SENIAT (continua, automática, consecutiva, inmediata, fehaciente) — 🟡 PARCIAL
 Cola de remisión desacoplada (`fiscal_transmission_queue`): cada documento emitido se encola
-automáticamente en la transacción de emisión. Un procesador con **reintentos y backoff exponencial**
-intenta la remisión vía un adapter y registra el **acuse** (fehaciencia). El adapter es hoy un *stub*
-porque el SENIAT aún no publica el canal técnico; cuando lo haga, solo se implementa `RemisionAdapter`.
-- Impl.: `db/schema/fiscal-transmission-queue.ts`, `cumplimiento/remision.service.ts`, `cumplimiento/remision-adapter.ts`, `cumplimiento/backoff.ts`, `drizzle/0054_*`
-- Test: `cumplimiento/remision.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`
-- Nota: desacoplado a propósito (docs/05 §5); la cola, los reintentos y el acuse ya están listos.
+automáticamente en la transacción de emisión, de forma **idempotente por documento** (índice único
+`(tenant_id, idempotency_key)`; un documento no se remite dos veces → "consecutiva" sin duplicados). Un
+procesador con **reintentos y backoff exponencial** intenta la remisión vía un adapter y registra el
+**acuse** (fehaciencia). El contrato del adapter soporta canal **síncrono** (ACUSADO inmediato) y
+**asíncrono** (ENVIADO + `consultarAcuse`); el `idempotency_key` viaja al canal como token de
+deduplicación. **Observabilidad** (`GET /cumplimiento/remision/estado`): conteos por estado, backlog
+elegible, antigüedad del registro sin acusar más viejo, tasa de error y **alertas** operativas.
+- El adapter por defecto es un *stub* (`StubRemisionAdapter`, canal no disponible) porque el SENIAT aún
+  no publica el canal técnico; cuando lo haga, solo se implementa `RemisionAdapter` (serialización al
+  formato firmado, firma, envío seguro, acuse). Esos puntos están marcados con `TODO-SENIAT` en
+  `remision-adapter.ts`; `RemisionAdapterDePrueba` ejercita el pipeline completo sin inventar el formato.
+- Impl.: `db/schema/fiscal-transmission-queue.ts`, `cumplimiento/remision.service.ts`, `cumplimiento/remision-adapter.ts`, `cumplimiento/backoff.ts`, `cumplimiento/observabilidad.ts`, `drizzle/0054_*`, `drizzle/0068_*`
+- Test: `cumplimiento/remision.spec.ts`, `cumplimiento/observabilidad.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`
+- Nota: desacoplado a propósito (docs/05 §5); la cola, los reintentos, el acuse, la idempotencia y la
+  observabilidad ya están listos. Pendiente SOLO el formato/firma/envío del canal real (TODO-SENIAT).
 
 ### 6.3.3 — Registro automático de eventos, fechado con fecha y hora — ✅ IMPLEMENTADO
 `fiscal_event_log` registra emisión, impresión, reimpresión, NC/ND, anulación y fallos, con fecha/hora

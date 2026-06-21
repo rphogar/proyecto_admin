@@ -68,20 +68,30 @@ const REQUISITOS: readonly RequisitoCumplimiento[] = [
     estado: 'PARCIAL',
     implementacion:
       'Cola de remisión desacoplada (fiscal_transmission_queue): cada documento emitido se encola ' +
-      'automáticamente en la misma transacción de emisión. Un procesador con reintentos y backoff ' +
-      'exponencial intenta la remisión vía un adapter y registra el acuse (fehaciencia). El adapter ' +
-      'es hoy un stub porque el SENIAT aún no publica el canal técnico.',
+      'automáticamente en la misma transacción de emisión, de forma idempotente por documento (índice ' +
+      'único tenant+idempotency_key → sin duplicados). Un procesador con reintentos y backoff ' +
+      'exponencial intenta la remisión vía un adapter y registra el acuse (fehaciencia); soporta canal ' +
+      'síncrono (acuse inmediato) y asíncrono (envío + consulta de acuse). Observabilidad de la cola ' +
+      '(conteos, antigüedad del pendiente más viejo, tasa de error) con alertas. El adapter es hoy un ' +
+      'stub porque el SENIAT aún no publica el canal técnico.',
     archivos: [
       'apps/api/src/db/schema/fiscal-transmission-queue.ts',
       'apps/api/src/cumplimiento/remision.service.ts',
       'apps/api/src/cumplimiento/remision-adapter.ts',
       'apps/api/src/cumplimiento/backoff.ts',
+      'apps/api/src/cumplimiento/observabilidad.ts',
       'apps/api/drizzle/0054_cumplimiento_rls_constraints_triggers.sql',
+      'apps/api/drizzle/0068_remision_idempotencia_observabilidad.sql',
     ],
-    tests: ['apps/api/src/cumplimiento/remision.spec.ts', 'apps/api/src/cumplimiento/cumplimiento.int.spec.ts'],
+    tests: [
+      'apps/api/src/cumplimiento/remision.spec.ts',
+      'apps/api/src/cumplimiento/observabilidad.spec.ts',
+      'apps/api/src/cumplimiento/cumplimiento.int.spec.ts',
+    ],
     notas:
-      'Desacoplado a propósito (docs/05 §5): cuando el SENIAT publique la especificación del canal, ' +
-      'solo se implementa el adapter real (RemisionAdapter); cola, reintentos y acuse ya están listos.',
+      'Desacoplado a propósito (docs/05 §5): cola, reintentos, acuse, idempotencia y observabilidad ya ' +
+      'están listos; pendiente SOLO el formato/firma/envío del canal real (marcado TODO-SENIAT en ' +
+      'remision-adapter.ts). Cuando el SENIAT publique la especificación, se implementa RemisionAdapter.',
   },
   {
     id: '6.3.3',

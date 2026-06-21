@@ -2,6 +2,7 @@ import { Body, Controller, Get, Header, Post, Query, StreamableFile } from '@nes
 import { type InformeCumplimiento, informeCumplimiento } from './compliance-report';
 import { ExpedienteService } from './expediente.service';
 import { type FilaEventoFiscal, FiscalEventLogService } from './fiscal-event-log.service';
+import type { EstadoCola } from './observabilidad';
 import { type FilaRemision, RemisionService } from './remision.service';
 
 /**
@@ -40,6 +41,12 @@ export class CumplimientoController {
   @Get('remision')
   async listarRemision(@Query() query: Record<string, unknown>): Promise<FilaRemision[]> {
     return this.remision.listar(query);
+  }
+
+  /** Observabilidad de la cola: conteos, backlog, antigüedad del pendiente más viejo, tasa de error y alertas. */
+  @Get('remision/estado')
+  async estadoRemision(@Query() query: Record<string, unknown>): Promise<EstadoCola> {
+    return this.remision.estadoCola(query);
   }
 
   /** Procesa los ítems pendientes (en producción lo dispara un job; aquí, manual/scheduler). */

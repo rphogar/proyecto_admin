@@ -8,7 +8,7 @@ import { createTestDatabase, type TestDatabase } from '../../test/pg-container';
 import { ExpedienteService } from './expediente.service';
 import { FiscalEventLogService } from './fiscal-event-log.service';
 import type { RemisionAdapter } from './remision-adapter';
-import { StubRemisionAdapter } from './remision-adapter';
+import { RemisionAdapterDePrueba, StubRemisionAdapter } from './remision-adapter';
 import { RemisionService } from './remision.service';
 
 /**
@@ -133,6 +133,71 @@ describe('Cumplimiento Providencia 121 — integración DB (P17)', () => {
     expect(item?.estado).toBe('ACUSADO');
     expect(item?.acuseRef).toBe('SENIAT-AC-001');
     expect(item?.acusadoAt).not.toBeNull();
+  });
+
+  it('remisión: encolar es idempotente por documento (no duplica la misma fila)', async () => {
+    // Documento real (la cola referencia document_id por FK): serie + documento mínimos.
+    const seriesId = randomUUID();
+    const docId = randomUUID();
+    await tdb.ownerSql`insert into series (id, tenant_id, company_id, doc_type, prefijo) values
+      (${seriesId}, ${tenantA}, ${companyA}, 'FACTURA', 'A')`;
+    await tdb.ownerSql`insert into documents (id, tenant_id, company_id, type, series_id, status, issue_date, issue_fecha_fiscal, currency)
+      values (${docId}, ${tenantA}, ${companyA}, 'FACTURA', ${seriesId}, 'ISSUED', now(), '2026-01-15', 'VES')`;
+
+    const [primera, segunda] = await como(tenantA, async () => {
+      const a = await withTenant(database.db, (tx) => remisionStub.encolar(tx, { companyId: companyA, documentId: docId, payload: { doc: docId } }));
+      const b = await withTenant(database.db, (tx) => remisionStub.encolar(tx, { companyId: companyA, documentId: docId, payload: { doc: docId } }));
+      return [a, b];
+    });
+
+    expect(segunda.id).toBe(primera.id); // misma fila: el segundo encolar devolvió la existente
+    expect(primera.idempotencyKey).toBe(docId);
+    const delDoc = (await como(tenantA, () => remisionStub.listar({}))).filter((r) => r.documentId === docId);
+    expect(delDoc).toHaveLength(1);
+  });
+
+  it('remisión: canal asíncrono — transmitir deja ENVIADO y al consultar el acuse cierra ACUSADO', async () => {
+    const remisionAsync = new RemisionService(database, new RemisionAdapterDePrueba({ asincrono: true, consultasHastaAcuse: 1 }));
+
+    const id = await como(tenantB, async () => {
+      const fila = await withTenant(database.db, (tx) => remisionAsync.encolar(tx, { companyId: companyB, payload: { doc: 'async-1' } }));
+      return fila.id;
+    });
+
+    // 1er ciclo: el canal acepta el envío (ENVIADO, acuse pendiente).
+    const env = await como(tenantB, () => remisionAsync.procesarPendientes());
+    expect(env.enviados).toBeGreaterThanOrEqual(1);
+    const enviado = (await como(tenantB, () => remisionAsync.listar({}))).find((r) => r.id === id);
+    expect(enviado?.estado).toBe('ENVIADO');
+    expect(enviado?.refEnvio).not.toBeNull();
+
+    // El backoff de acuse agenda el próximo intento en el futuro; lo adelantamos para el 2º ciclo.
+    await tdb.ownerSql`update fiscal_transmission_queue set proximo_intento = now() where id = ${id}`;
+    const ack = await como(tenantB, () => remisionAsync.procesarPendientes());
+    expect(ack.acusados).toBeGreaterThanOrEqual(1);
+    const acusado = (await como(tenantB, () => remisionAsync.listar({}))).find((r) => r.id === id);
+    expect(acusado?.estado).toBe('ACUSADO');
+    expect(acusado?.acuseRef).toMatch(/^AC-/);
+  });
+
+  it('remisión: estadoCola reporta conteos, backlog elegible y antigüedad por empresa', async () => {
+    const companyC = randomUUID();
+    await tdb.ownerSql`insert into companies (id, tenant_id, rif, razon_social, tipo_contribuyente, spe) values
+      (${companyC}, ${tenantA}, ${rif('J', '00000003')}, 'Empresa C', 'ORDINARIO', false)`;
+
+    await como(tenantA, async () => {
+      for (let i = 0; i < 3; i += 1) {
+        await withTenant(database.db, (tx) => remisionStub.encolar(tx, { companyId: companyC, payload: { doc: `C${i}` } }));
+      }
+    });
+
+    const estado = await como(tenantA, () => remisionStub.estadoCola({ companyId: companyC }));
+    expect(estado.conteos.pendiente).toBe(3);
+    expect(estado.conteos.total).toBe(3);
+    expect(estado.pendientesElegibles).toBe(3);
+    expect(estado.antiguedadPendienteSegundos).not.toBeNull();
+    expect(estado.tasaError).toBe(0);
+    expect(Array.isArray(estado.alertas)).toBe(true);
   });
 
   it('expediente: incluye la versión sembrada y el informe de los 6 requisitos', async () => {
