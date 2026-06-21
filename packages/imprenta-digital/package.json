@@ -1,0 +1,28 @@
+{
+  "name": "@contave/imprenta-digital",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Régimen de factura digital (P24, Providencia SNAT/2024/000102): adapter ImprentaDigital (asignación de número de control digital, entrega electrónica, conservación), control verificable (identificador/QR), adapter simulado y punto de extensión de validación en línea del SENIAT. Puro y sin IO.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@contave/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -449,6 +449,34 @@
       "when": 1782005409972,
       "tag": "0063_seed_impresion_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1782007351150,
+      "tag": "0064_facturacion_digital_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1782007352150,
+      "tag": "0065_facturacion_digital_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1782007353150,
+      "tag": "0066_facturacion_digital_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1782007354150,
+      "tag": "0067_seed_facturacion_digital_permissions",
+      "breakpoints": true
     }
   ]
 }

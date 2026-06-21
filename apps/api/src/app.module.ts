@@ -8,6 +8,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './db/database.module';
 import { DevModule } from './dev/dev.module';
 import { DocumentosModule } from './documentos/documentos.module';
+import { FacturacionDigitalModule } from './facturacion-digital/facturacion-digital.module';
 import { HealthController } from './health/health.controller';
 import { ImpresionFiscalModule } from './impresion-fiscal/impresion-fiscal.module';
 import { ImpuestosModule } from './impuestos/impuestos.module';
@@ -24,7 +25,7 @@ import { TesoreriaModule } from './tesoreria/tesoreria.module';
 const DEV_MODULES = process.env.NODE_ENV === 'production' ? [] : [DevModule];
 
 @Module({
-  imports: [DatabaseModule, AuditModule, SeguridadModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, ...DEV_MODULES],
+  imports: [DatabaseModule, AuditModule, SeguridadModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, ...DEV_MODULES],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {

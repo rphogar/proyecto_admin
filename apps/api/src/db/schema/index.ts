@@ -96,3 +96,7 @@ export * from './product-versions';
 // fiscal (fiscal_print_queue), reclamada por un agente local que imprime por serie/USB y reporta el
 // acuse con la numeración asignada por la memoria fiscal. Desacoplada como la cola de remisión.
 export * from './fiscal-print-queue';
+// P24 — Factura digital (Providencia SNAT/2024/000102, docs/05 §5, docs/13): cola de entrega
+// electrónica y conservación del documento digital (digital_invoice_deliveries), tras asignar el
+// número de control digital por la imprenta autorizada. Desacoplada como las demás colas.
+export * from './digital-invoice-deliveries';

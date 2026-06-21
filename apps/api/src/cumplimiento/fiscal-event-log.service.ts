@@ -16,9 +16,22 @@ export type TipoEventoFiscal =
   | 'NOTA_CREDITO'
   | 'NOTA_DEBITO'
   | 'ANULACION'
-  | 'FALLO';
+  | 'FALLO'
+  // P24 — factura digital: entrega electrónica del documento y conservación a disposición del SENIAT.
+  | 'ENTREGA'
+  | 'CONSERVACION';
 
-const TIPOS_EVENTO = ['EMISION', 'IMPRESION', 'REIMPRESION', 'NOTA_CREDITO', 'NOTA_DEBITO', 'ANULACION', 'FALLO'] as const;
+const TIPOS_EVENTO = [
+  'EMISION',
+  'IMPRESION',
+  'REIMPRESION',
+  'NOTA_CREDITO',
+  'NOTA_DEBITO',
+  'ANULACION',
+  'FALLO',
+  'ENTREGA',
+  'CONSERVACION',
+] as const;
 /** Eventos que un usuario puede registrar manualmente por endpoint (el resto los emite el sistema). */
 const TIPOS_MANUALES: ReadonlySet<TipoEventoFiscal> = new Set(['IMPRESION', 'REIMPRESION', 'ANULACION', 'FALLO']);
 
