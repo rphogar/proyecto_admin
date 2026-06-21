@@ -92,3 +92,7 @@ export * from './delegaciones';
 export * from './fiscal-event-log';
 export * from './fiscal-transmission-queue';
 export * from './product-versions';
+// P23 — Impresora fiscal homologada (docs/02 §6.1, docs/05 §5): cola de impresión hacia la máquina
+// fiscal (fiscal_print_queue), reclamada por un agente local que imprime por serie/USB y reporta el
+// acuse con la numeración asignada por la memoria fiscal. Desacoplada como la cola de remisión.
+export * from './fiscal-print-queue';

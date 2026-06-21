@@ -38,6 +38,9 @@ importers:
       '@contave/fiscal-engine':
         specifier: workspace:*
         version: link:../../packages/fiscal-engine
+      '@contave/impresora-fiscal':
+        specifier: workspace:*
+        version: link:../../packages/impresora-fiscal
       '@contave/ledger':
         specifier: workspace:*
         version: link:../../packages/ledger
@@ -212,6 +215,19 @@ importers:
       fast-check:
         specifier: ^3.23.2
         version: 3.23.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.20)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.48.0)
+
+  packages/impresora-fiscal:
+    dependencies:
+      '@contave/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

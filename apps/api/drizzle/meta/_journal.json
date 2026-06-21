@@ -421,6 +421,34 @@
       "when": 1781986452058,
       "tag": "0059_nice_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1782005406972,
+      "tag": "0060_impresion_fiscal_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1782005407972,
+      "tag": "0061_impresion_fiscal_rls_constraints_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1782005408972,
+      "tag": "0062_impresion_fiscal_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1782005409972,
+      "tag": "0063_seed_impresion_permissions",
+      "breakpoints": true
     }
   ]
 }

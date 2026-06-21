@@ -160,6 +160,17 @@ export interface DocumentoEmitido {
   impuestos: (typeof documentTaxes.$inferSelect)[];
 }
 
+/** Opciones de emisión. */
+export interface OpcionesEmision {
+  /**
+   * Numeración asignada por la **memoria fiscal** de la máquina fiscal (P23). Si se indica, la emisión
+   * NO consume el correlativo de la serie (la autoridad de numeración es el hardware) y registra,
+   * además del evento de EMISION, el de IMPRESION en la bitácora. `number` es el número fiscal como
+   * entero (cumple el CHECK `documents_emitido_con_number`); `controlFiscal` va al número de control.
+   */
+  numeracionExterna?: { number: number; numeroFiscal: string; controlFiscal: string };
+}
+
 /**
  * Emisión de documentos fiscales (P6, docs/05 §3.4 y §4). La emisión es una **transacción única**:
  * validación de requisitos (00071/00102) → asiento (partida doble) → consumo del correlativo
@@ -179,8 +190,9 @@ export class EmisionService {
     private readonly remision: RemisionService,
   ) {}
 
-  async emitir(body: unknown): Promise<DocumentoEmitido> {
+  async emitir(body: unknown, opciones?: OpcionesEmision): Promise<DocumentoEmitido> {
     const e = parseEmision(body);
+    const numeracionExterna = opciones?.numeracionExterna ?? null;
     if (!TIPOS_EMISIBLES.has(e.tipo)) {
       throw new BadRequestException(`P8 emite FACTURA, NOTA_CREDITO y NOTA_DEBITO; ${e.tipo} llega en fases posteriores`);
     }
@@ -241,7 +253,8 @@ export class EmisionService {
       //    asiento comparten id de origen (`sourceId`) para el drill-down documento ↔ asiento. La NC
       //    es el reverso (D Ventas/IVA, C Clientes); la ND y la factura usan la plantilla aditiva.
       const docId = randomUUID();
-      const etiqueta = `${nombreTipo(e.tipo)} ${serie.prefijo}${serie.nextNumber} a ${party?.razonSocial ?? 'consumidor final'}`;
+      const numeroEtiqueta = numeracionExterna?.number ?? serie.nextNumber;
+      const etiqueta = `${nombreTipo(e.tipo)} ${serie.prefijo}${numeroEtiqueta} a ${party?.razonSocial ?? 'consumidor final'}`;
       const entradaAsiento =
         e.tipo === 'NOTA_CREDITO'
           ? armarAsientoNotaCredito(calc, {
@@ -275,10 +288,11 @@ export class EmisionService {
         cuentas,
       });
 
-      // 5) Correlativo: consumo transaccional (§4). `RETURNING next_number` da el PRÓXIMO; el
-      //    asignado es ese − 1. El UPDATE bloquea la fila (FOR UPDATE implícito) hasta el COMMIT:
-      //    bajo concurrencia, cada emisión obtiene un número distinto y consecutivo (casos 21/53).
-      const numero = await consumirNumero(tx, e.seriesId);
+      // 5) Numeración. Forma libre / imprenta digital: consumo transaccional del correlativo (§4;
+      //    `RETURNING next_number` da el PRÓXIMO, el asignado es ese − 1; el UPDATE bloquea la fila
+      //    hasta el COMMIT → consecutivo sin huecos, casos 21/53). Máquina fiscal (P23): la numeración
+      //    la asigna la memoria fiscal del hardware; NO se consume correlativo de serie.
+      const numero = numeracionExterna !== null ? numeracionExterna.number : await consumirNumero(tx, e.seriesId);
 
       // 6) Documento ISSUED (inmutable) + snapshots del adquirente + hash de integridad.
       const issueFechaFiscal = fechaFiscal(e.issueDate);
@@ -305,7 +319,7 @@ export class EmisionService {
           type: e.tipo,
           seriesId: e.seriesId,
           number: numero,
-          controlNumber: e.numeroControl,
+          controlNumber: numeracionExterna !== null ? numeracionExterna.controlFiscal : e.numeroControl,
           status: 'ISSUED',
           medioEmision: e.medioEmision,
           partyId: e.partyId,
@@ -421,6 +435,25 @@ export class EmisionService {
           issueFechaFiscal,
         },
       });
+
+      // 9) Máquina fiscal (P23): el agente confirmó la impresión con la numeración del hardware. Se
+      //    deja constancia del evento de IMPRESION en la bitácora, atómico con la emisión.
+      if (numeracionExterna !== null) {
+        await this.fiscalEventLog.registrar(tx, {
+          companyId: e.companyId,
+          documentId: docId,
+          eventType: 'IMPRESION',
+          tipoDocumento: e.tipo,
+          documentNumber: `${serie.prefijo}${numero}`,
+          controlNumber: numeracionExterna.controlFiscal,
+          hashDocumento: hash,
+          payload: {
+            medioEmision: 'MAQUINA_FISCAL',
+            numeroFiscal: numeracionExterna.numeroFiscal,
+            controlFiscal: numeracionExterna.controlFiscal,
+          },
+        });
+      }
 
       return { documento, lineas, impuestos };
     });

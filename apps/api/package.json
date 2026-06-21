@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@contave/fiscal-engine": "workspace:*",
+    "@contave/impresora-fiscal": "workspace:*",
     "@contave/ledger": "workspace:*",
     "@contave/shared": "workspace:*",
     "@nestjs/common": "^11.0.0",
