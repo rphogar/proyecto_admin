@@ -15,7 +15,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:bootstrap-roles": "tsx src/db/bootstrap-roles.ts",
     "db:seed-demo": "tsx src/db/seed-demo.ts",
-    "drill:invariantes": "tsx src/seguridad/drill-invariantes.ts"
+    "drill:invariantes": "tsx src/seguridad/drill-invariantes.ts",
+    "homologacion:solicitar": "tsx src/cumplimiento/solicitar-homologacion.ts"
   },
   "dependencies": {
     "@contave/fiscal-engine": "workspace:*",

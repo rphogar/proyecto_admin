@@ -22,9 +22,119 @@ export interface ExpedienteTecnico {
     inmutabilidad: string[];
     multiTenancy: string[];
   };
+  /** Manuales de usuario por rol (exigidos por §6.3 req. 6: la solicitud incluye manuales). */
+  manuales: readonly ManualUsuario[];
+  /** Pruebas de inviolabilidad documentadas (qué intentan demostrar y dónde están). */
+  pruebasInviolabilidad: readonly PruebaInviolabilidad[];
   /** Informe de cumplimiento requisito-por-requisito. */
   cumplimiento: InformeCumplimiento;
+  /** Entregables del trámite que NO son software (se marcan pendientes explícitos). */
+  pendientesNoSoftware: readonly string[];
 }
+
+/** Manual de usuario dirigido a un rol/audiencia, con sus secciones y la referencia documental. */
+export interface ManualUsuario {
+  audiencia: string;
+  titulo: string;
+  secciones: string[];
+  /** Documento del repo que desarrolla el manual (la versión PDF firmada es anexo NO-software). */
+  referencia: string;
+}
+
+/** Prueba de inviolabilidad: qué intenta vulnerar, el resultado esperado y el archivo de test. */
+export interface PruebaInviolabilidad {
+  escenario: string;
+  resultadoEsperado: string;
+  test: string;
+}
+
+/**
+ * Manuales de usuario por rol (§6.3 req. 6: la solicitud de homologación incluye manuales de usuario).
+ * El contenido vivo se desarrolla en `docs/06-MODULOS-UI.md`; la versión PDF firmada para el trámite
+ * es un anexo NO-software (ver `pendientesNoSoftware`).
+ */
+const MANUALES: readonly ManualUsuario[] = [
+  {
+    audiencia: 'owner / admin',
+    titulo: 'Administración del tenant, empresas y seguridad',
+    secciones: [
+      'Alta de empresa, series y numeración fiscal',
+      'Usuarios, roles (RBAC) y 2FA TOTP obligatorio',
+      'Parámetros fiscales vigentes (UT, alícuotas, calendarios) y cierre de períodos',
+    ],
+    referencia: 'docs/06-MODULOS-UI.md',
+  },
+  {
+    audiencia: 'contador',
+    titulo: 'Operación contable y fiscal',
+    secciones: [
+      'Asientos, plantillas de contabilización y cierre mensual',
+      'Declaraciones IVA/ISLR/retenciones, libros de compras/ventas y diferencial cambiario',
+      'Bitácora fiscal, informe de cumplimiento y expediente de homologación',
+    ],
+    referencia: 'docs/06-MODULOS-UI.md',
+  },
+  {
+    audiencia: 'cajero / vendedor',
+    titulo: 'Emisión de documentos y cobranza',
+    secciones: [
+      'Emisión de facturas y notas de crédito/débito (corrección sin alterar el original)',
+      'Cobros, IGTF y manejo multimoneda con tasa BCV congelada por documento',
+      'Reimpresión e impresión fiscal',
+    ],
+    referencia: 'docs/06-MODULOS-UI.md',
+  },
+  {
+    audiencia: 'auditor (solo lectura)',
+    titulo: 'Consulta y trazabilidad',
+    secciones: [
+      'Consulta de documentos, asientos y libros',
+      'Verificación de la cadena de la bitácora fiscal y descarga del expediente técnico',
+    ],
+    referencia: 'docs/06-MODULOS-UI.md',
+  },
+];
+
+/**
+ * Pruebas de inviolabilidad documentadas (§6.3 req. 1 y 5): cada escenario intenta vulnerar un
+ * invariante "saltando la API" y demuestra que el sistema lo rechaza o lo detecta. El expediente las
+ * lista para la evaluación técnica; los archivos se ejecutan en CI.
+ */
+const PRUEBAS_INVIOLABILIDAD: readonly PruebaInviolabilidad[] = [
+  {
+    escenario: 'Alterar o borrar un evento de la bitácora fiscal encadenada (SQL directo)',
+    resultadoEsperado:
+      'El rol de aplicación no tiene UPDATE/DELETE (permission denied) y el trigger aborta incluso al ' +
+      'owner (append-only); una alteración forzada rompe la cadena y verificarCadena() la detecta.',
+    test: 'apps/api/src/cumplimiento/inviolabilidad.int.spec.ts',
+  },
+  {
+    escenario: 'Modificar o borrar un documento ISSUED saltando la API',
+    resultadoEsperado: 'Trigger de inmutabilidad lo rechaza (inmutable) y el rol app no tiene UPDATE/DELETE.',
+    test: 'apps/api/src/cumplimiento/inviolabilidad.int.spec.ts',
+  },
+  {
+    escenario: 'Modificar o borrar un asiento POSTED (o sus líneas) saltando la API',
+    resultadoEsperado: 'Trigger de inmutabilidad del ledger lo rechaza (inmutable).',
+    test: 'apps/api/src/cumplimiento/inviolabilidad.int.spec.ts',
+  },
+  {
+    escenario: 'Crear huecos de numeración bajo concurrencia (500 emisiones simultáneas, caso 21)',
+    resultadoEsperado: 'Correlativo 1..500 consecutivo sin huecos ni duplicados (contador transaccional).',
+    test: 'apps/api/src/cumplimiento/inviolabilidad.int.spec.ts',
+  },
+];
+
+/**
+ * Entregables del trámite SNAT/2024/000121 que NO son software: se listan explícitos para que el
+ * expediente no aparente cubrirlos. El software queda listo; estos los aporta el proveedor/legal.
+ */
+const PENDIENTES_NO_SOFTWARE: readonly string[] = [
+  'Asesoría legal del trámite de homologación ante el SENIAT (presentación y seguimiento).',
+  'Anexos legales: documento constitutivo, RIF del proveedor y poderes/representación.',
+  'Manuales de usuario en PDF firmados (la versión viva está en docs/06; ver "manuales").',
+  'Implementación del RemisionAdapter real cuando el SENIAT publique la especificación del canal.',
+];
 
 /**
  * Expediente técnico de homologación (P17, Providencia 121 §6.3 req. 6). Ensambla la ficha del
@@ -77,7 +187,10 @@ export class ExpedienteService {
           'Toda escritura auditada en audit_events (append-only) con actor, IP, device y hora de Caracas',
         ],
       },
+      manuales: MANUALES,
+      pruebasInviolabilidad: PRUEBAS_INVIOLABILIDAD,
       cumplimiento: informeCumplimiento(ahora),
+      pendientesNoSoftware: PENDIENTES_NO_SOFTWARE,
     };
   }
 

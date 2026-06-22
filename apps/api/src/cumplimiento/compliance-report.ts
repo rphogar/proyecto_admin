@@ -57,6 +57,7 @@ const REQUISITOS: readonly RequisitoCumplimiento[] = [
     tests: [
       'apps/api/src/cumplimiento/cadena-hash.spec.ts',
       'apps/api/src/cumplimiento/cumplimiento.int.spec.ts',
+      'apps/api/src/cumplimiento/inviolabilidad.int.spec.ts',
       'apps/api/src/audit/audit-append-only.int.spec.ts',
     ],
   },
@@ -131,15 +132,23 @@ const REQUISITOS: readonly RequisitoCumplimiento[] = [
     estado: 'PARCIAL',
     implementacion:
       'Numeración consecutiva sin huecos por serie (contador transaccional con bloqueo de fila, nunca ' +
-      'SERIAL). Multi-tenant con RLS forzada en toda tabla (sin contabilidad paralela cruzada). ' +
-      'Inmutables protegidos por trigger; toda escritura auditada. La versión del producto guarda el ' +
-      'hash del artefacto homologado para detectar binarios alterados.',
+      'SERIAL), verificada bajo 500 emisiones simultáneas. Multi-tenant con RLS forzada en toda tabla ' +
+      '(sin contabilidad paralela cruzada). Inmutables protegidos por trigger; toda escritura auditada. ' +
+      'La versión del producto guarda el hash REPRODUCIBLE del artefacto de build homologado (huella ' +
+      'determinista e independiente del orden) para detectar binarios alterados.',
     archivos: [
       'apps/api/src/documentos/emision.service.ts',
       'apps/api/drizzle/0017_documents_rls_constraints_triggers.sql',
       'apps/api/src/db/schema/product-versions.ts',
+      'apps/api/src/cumplimiento/artefacto.ts',
+      'apps/api/src/cumplimiento/solicitar-homologacion.ts',
     ],
-    tests: ['apps/api/src/documentos/emision.int.spec.ts', 'apps/api/src/cumplimiento/cumplimiento.int.spec.ts'],
+    tests: [
+      'apps/api/src/documentos/emision.int.spec.ts',
+      'apps/api/src/cumplimiento/cumplimiento.int.spec.ts',
+      'apps/api/src/cumplimiento/inviolabilidad.int.spec.ts',
+      'apps/api/src/cumplimiento/artefacto.spec.ts',
+    ],
     notas:
       'El control de equipos físicos no fiscales (impresoras fiscales homologadas) llega en F2 con el ' +
       'driver de impresora fiscal; aquí se cubre el desvío de datos a nivel de software.',
@@ -152,14 +161,26 @@ const REQUISITOS: readonly RequisitoCumplimiento[] = [
     estado: 'IMPLEMENTADO',
     implementacion:
       'Registro product_versions con versión, changelog, estado de homologación, nº de resolución y ' +
-      'hash del artefacto. El endpoint de expediente técnico ensambla ficha, arquitectura de ' +
-      'seguridad e informe de cumplimiento contra la versión vigente, listo para el trámite.',
+      'hash del artefacto. El expediente técnico ensambla ficha, MANUALES de usuario por rol, ' +
+      'arquitectura de seguridad, pruebas de inviolabilidad e informe de cumplimiento contra la versión ' +
+      'vigente, listo para el trámite. Un flujo del proveedor (solicitar-homologacion) computa el hash ' +
+      'reproducible del build, verifica su reproducibilidad y pasa la versión a SOLICITADA.',
     archivos: [
       'apps/api/src/db/schema/product-versions.ts',
       'apps/api/src/cumplimiento/expediente.service.ts',
+      'apps/api/src/cumplimiento/artefacto.ts',
+      'apps/api/src/cumplimiento/solicitar-homologacion.ts',
       'apps/api/drizzle/0056_seed_cumplimiento_permissions.sql',
     ],
-    tests: ['apps/api/src/cumplimiento/expediente.spec.ts', 'apps/api/src/cumplimiento/cumplimiento.int.spec.ts'],
+    tests: [
+      'apps/api/src/cumplimiento/expediente.spec.ts',
+      'apps/api/src/cumplimiento/artefacto.spec.ts',
+      'apps/api/src/cumplimiento/cumplimiento.int.spec.ts',
+    ],
+    notas:
+      'Pendientes NO-software del trámite (marcados explícitos en el expediente, campo ' +
+      'pendientesNoSoftware): asesoría legal, anexos legales, manuales en PDF firmados y el ' +
+      'RemisionAdapter real cuando el SENIAT publique el canal.',
   },
 ];
 

@@ -17,9 +17,12 @@ apps/api/src/cumplimiento/
   backoff.ts                → backoff exponencial de reintentos (puro)
   observabilidad.ts         → estado de la cola + evaluación de alertas (puro, testeable)
   remision.service.ts       → cola de remisión: encolar idempotente, procesar (envío/acuse), estado
-  expediente.service.ts     → expediente técnico de homologación (ficha + arquitectura + informe)
+  expediente.service.ts     → expediente técnico (ficha + manuales + arquitectura + inviolabilidad + informe)
+  artefacto.ts              → huella SHA-256 reproducible del build homologado (puro, testeable)
+  solicitar-homologacion.ts → flujo del proveedor: hash del build → product_versions = SOLICITADA
   compliance-report.ts      → este informe, como datos verificados por test
   cumplimiento.controller   → /cumplimiento/{eventos,remision,remision/estado,informe,expediente}
+  inviolabilidad.int.spec   → pruebas de inviolabilidad documentadas (bitácora/documento/asiento/numeración)
 ```
 
 Tablas (docs/05 §3.9): `fiscal_event_log` (append-only, encadenada), `fiscal_transmission_queue`
@@ -35,7 +38,7 @@ cada documento lleva hash de integridad SHA-256. La bitácora fiscal es **append
 hash** (cada evento incorpora el hash del anterior del tenant): alterar o reordenar un evento rompe la
 cadena y se detecta con `verificarCadena()`.
 - Impl.: `db/schema/documents.ts`, `drizzle/0017_*`, `drizzle/0006_*`, `cumplimiento/cadena-hash.ts`, `cumplimiento/fiscal-event-log.service.ts`, `drizzle/0054_*`
-- Test: `cumplimiento/cadena-hash.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`, `audit/audit-append-only.int.spec.ts`
+- Test: `cumplimiento/cadena-hash.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`, `cumplimiento/inviolabilidad.int.spec.ts`, `audit/audit-append-only.int.spec.ts`
 
 ### 6.3.2 — Remisión electrónica al SENIAT (continua, automática, consecutiva, inmediata, fehaciente) — 🟡 PARCIAL
 Cola de remisión desacoplada (`fiscal_transmission_queue`): cada documento emitido se encola
@@ -71,19 +74,25 @@ asiento de reverso/aditivo; el original queda intacto. La NC valida el saldo acr
 
 ### 6.3.5 — Impedir equipos no fiscales / contabilidad paralela — 🟡 PARCIAL
 Numeración consecutiva sin huecos por serie (contador transaccional con bloqueo de fila, nunca
-`SERIAL`); multi-tenant con RLS forzada en toda tabla (sin contabilidad paralela cruzada); inmutables
-protegidos por trigger; toda escritura auditada. La versión del producto guarda el hash del artefacto
-homologado para detectar binarios alterados.
-- Impl.: `documentos/emision.service.ts`, `drizzle/0017_*`, `db/schema/product-versions.ts`
-- Test: `documentos/emision.int.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`
+`SERIAL`), **verificada bajo 500 emisiones simultáneas** (refuerza el caso 21); multi-tenant con RLS
+forzada en toda tabla (sin contabilidad paralela cruzada); inmutables protegidos por trigger; toda
+escritura auditada. La versión del producto guarda el **hash reproducible** del artefacto de build
+homologado (huella determinista e independiente del orden, `artefacto.ts`) para detectar binarios
+alterados.
+- Impl.: `documentos/emision.service.ts`, `drizzle/0017_*`, `db/schema/product-versions.ts`, `cumplimiento/artefacto.ts`, `cumplimiento/solicitar-homologacion.ts`
+- Test: `documentos/emision.int.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`, `cumplimiento/inviolabilidad.int.spec.ts`, `cumplimiento/artefacto.spec.ts`
 - Nota: el control de impresoras fiscales homologadas (hardware) llega en F2 con su driver.
 
 ### 6.3.6 — Versionado formal del producto; cada versión requiere nueva homologación — ✅ IMPLEMENTADO
 `product_versions` registra versión, changelog, estado de homologación, nº de resolución y hash del
-artefacto. El endpoint de expediente técnico ensambla ficha, arquitectura de seguridad e informe de
-cumplimiento contra la versión vigente, listo para el trámite.
-- Impl.: `db/schema/product-versions.ts`, `cumplimiento/expediente.service.ts`, `drizzle/0056_*`
-- Test: `cumplimiento/expediente.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`
+artefacto. El expediente técnico ensambla ficha, **manuales de usuario por rol**, arquitectura de
+seguridad, **pruebas de inviolabilidad** e informe de cumplimiento contra la versión vigente, listo
+para el trámite. El **flujo del proveedor** `solicitar-homologacion` computa el hash reproducible del
+build (`artefacto.ts`), verifica su reproducibilidad y pasa la versión a `SOLICITADA` registrando ese
+hash (operación owner: `product_versions` es catálogo global; el rol app solo lee).
+- Impl.: `db/schema/product-versions.ts`, `cumplimiento/expediente.service.ts`, `cumplimiento/artefacto.ts`, `cumplimiento/solicitar-homologacion.ts`, `drizzle/0056_*`
+- Test: `cumplimiento/expediente.spec.ts`, `cumplimiento/artefacto.spec.ts`, `cumplimiento/cumplimiento.int.spec.ts`
+- Comando: `pnpm --filter @contave/api build && pnpm --filter @contave/api homologacion:solicitar -- --version <semver>`
 
 ## Endpoints
 
@@ -101,8 +110,15 @@ cumplimiento contra la versión vigente, listo para el trámite.
 
 ## Pendiente para la homologación (roadmap F3)
 
+Ya hecho en P26: el expediente incluye **manuales de usuario** y **pruebas de inviolabilidad**
+documentadas; existe el flujo del proveedor para pasar `product_versions` a `SOLICITADA` registrando
+el **hash reproducible** del artefacto (`solicitar-homologacion`).
+
+Pendientes **NO-software** (no los cubre el código; los aporta el proveedor/legal — se listan también
+en el expediente, campo `pendientesNoSoftware`):
+
+- Asesoría legal del trámite SNAT/2024/000121 (presentación y seguimiento ante el SENIAT).
+- Anexos legales: documento constitutivo, RIF del proveedor y poderes/representación.
+- Manuales de usuario en **PDF firmados** (la versión viva está en `docs/06` y en el expediente).
 - Implementar el `RemisionAdapter` real cuando el SENIAT publique la especificación del canal.
 - Driver de impresora fiscal homologada (F2) para el control de equipos físicos (req. 6.3.5).
-- Pasar `product_versions` a estado `SOLICITADA` al presentar el trámite y registrar el hash del
-  artefacto del build homologado.
-- Asesoría legal del trámite SNAT/2024/000121 y ficha técnica/manuales de usuario anexos.

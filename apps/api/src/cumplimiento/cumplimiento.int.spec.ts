@@ -205,5 +205,8 @@ describe('Cumplimiento Providencia 121 — integración DB (P17)', () => {
     expect(exp.ficha.versiones.some((v) => v.version === '0.1.0')).toBe(true);
     expect(exp.ficha.versionVigente?.version).toBe('0.1.0');
     expect(exp.cumplimiento.requisitos).toHaveLength(6);
+    expect(exp.manuales.length).toBeGreaterThan(0);
+    expect(exp.pruebasInviolabilidad.length).toBeGreaterThan(0);
+    expect(exp.pendientesNoSoftware.length).toBeGreaterThan(0);
   });
 });

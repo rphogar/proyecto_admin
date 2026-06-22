@@ -15,12 +15,16 @@ describe('expediente técnico', () => {
 
   const fecha = new Date('2026-06-16T00:00:00.000Z');
 
-  it('ensambla ficha, arquitectura e informe de cumplimiento', async () => {
+  it('ensambla ficha, arquitectura, manuales, pruebas de inviolabilidad e informe de cumplimiento', async () => {
     const exp = await servicioCon([]).generar(fecha);
     expect(exp.norma).toMatch(/SNAT\/2024\/000121/);
     expect(exp.ficha.producto).toMatch(/ContaVE/);
     expect(exp.arquitectura.inmutabilidad.length).toBeGreaterThan(0);
     expect(exp.arquitectura.multiTenancy.length).toBeGreaterThan(0);
+    expect(exp.manuales.length).toBeGreaterThan(0);
+    expect(exp.manuales.every((m) => m.secciones.length > 0)).toBe(true);
+    expect(exp.pruebasInviolabilidad.length).toBeGreaterThan(0);
+    expect(exp.pendientesNoSoftware.length).toBeGreaterThan(0);
     expect(exp.cumplimiento.requisitos).toHaveLength(6);
   });
 
@@ -43,5 +47,8 @@ describe('expediente técnico', () => {
     expect(filename).toBe('expediente-tecnico-providencia-121-2026-06-16.json');
     const parsed = JSON.parse(buffer.toString('utf8'));
     expect(parsed.cumplimiento.requisitos).toHaveLength(6);
+    expect(parsed.manuales.length).toBeGreaterThan(0);
+    expect(parsed.pruebasInviolabilidad.length).toBeGreaterThan(0);
+    expect(parsed.pendientesNoSoftware.length).toBeGreaterThan(0);
   });
 });
