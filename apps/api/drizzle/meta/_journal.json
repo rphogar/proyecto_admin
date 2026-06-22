@@ -498,6 +498,20 @@
       "when": 1782166095710,
       "tag": "0070_auth_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1782169654347,
+      "tag": "0071_refresh_tokens_tenant",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1782169655347,
+      "tag": "0072_memberships_self_read",
+      "breakpoints": true
     }
   ]
 }

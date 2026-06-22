@@ -19,6 +19,13 @@ export interface ClaimsJwt {
   sub: string;
   /** Ámbito del token: sesión de acceso o reto de segundo factor. */
   scope: 'access' | '2fa';
+  /**
+   * Tenant/empresa activa de la sesión (P28). Presente solo en tokens `access`: fija el contexto
+   * de tenant (`app.tenant_id`) en el middleware, **derivado del token firmado**, nunca de
+   * cabeceras del cliente. Se emite acotado a un tenant donde el usuario tiene membresía válida
+   * (`memberships`); manipularlo invalida la firma HS256. Ausente en el reto `2fa`.
+   */
+  tid?: string;
   /** Emitido en (epoch segundos). */
   iat: number;
   /** Expira en (epoch segundos). */

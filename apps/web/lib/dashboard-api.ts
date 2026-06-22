@@ -3,13 +3,13 @@
  * todos los widgets de la vista móvil-primero, derivados en vivo del ledger (regla 8). Reusa
  * `ApiError` de los maestros para preservar el cuerpo del error.
  */
-import { cabecerasTenant } from './contexto-sesion';
+import { cabecerasAuth } from './contexto-sesion';
 import { ApiError } from './maestros-api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 async function req<T>(path: string): Promise<T> {
-  const resp = await fetch(`${API_BASE}${path}`, { headers: cabecerasTenant() });
+  const resp = await fetch(`${API_BASE}${path}`, { headers: cabecerasAuth() });
   if (!resp.ok) {
     let body: unknown;
     try {

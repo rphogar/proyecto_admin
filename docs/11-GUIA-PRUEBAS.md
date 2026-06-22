@@ -4,11 +4,12 @@ Esta guía te lleva de cero a operar el sistema como lo haría **Distribuidora D
 PYME venezolana. Está pensada para validar a mano que cada módulo funciona de punta a punta.
 
 > **Estado honesto del sistema (jun-2026).** La base de datos, los servicios de cada módulo y sus
-> tests están completos. La **autenticación real (login con usuario/clave, JWT, membresías) aún NO
-> está construida**: es un STUB planificado. Para poder probar, se usa un **login demo de
-> desarrollo** (`/dev/sesion`) que entra a una empresa sembrada. Esto se reemplazará por el login
-> real más adelante. No subir el módulo `dev` ni el seed demo a producción (ya está blindado:
-> el módulo `dev` no se monta si `NODE_ENV=production`).
+> tests están completos. La **autenticación real está construida** (P27/P28): login con
+> usuario/clave (Argon2), JWT de sesión acotado al tenant, refresh rotativo, 2FA TOTP y
+> **multi-empresa con cambio seguro**. El contexto de tenant se deriva del token firmado, nunca de
+> cabeceras del cliente. En desarrollo se entra con el **login real** usando las credenciales
+> sembradas por `db:seed-demo` (`demo@contave.test` / `demo-contave-12345`). No subir el seed demo
+> a producción (se ejecuta a mano y nunca viaja).
 
 ---
 
@@ -102,17 +103,26 @@ tenant). Luego abre la web en `http://localhost:3000`.
 
 ---
 
-## 4. Entrar a la empresa (login demo)
+## 4. Entrar a la empresa (login real)
 
-1. En la barra superior, pulsa **“Entrar (empresa demo)”**.
-2. Debe mostrarse **Empresa: Distribuidora Demo, C.A.** El frontend ya guarda el contexto
-   (tenant + empresa + usuario) y lo envía en cada llamada como cabecera `x-tenant-id`.
-3. En la portada, el widget **“Tasa del día”** debe mostrar **Bs 40,00000000** (la tasa sembrada).
+1. En la barra superior, pulsa **“Iniciar sesión”** (o abre `/login`).
+2. Ingresa las credenciales sembradas: **`demo@contave.test`** / **`demo-contave-12345`**.
+   - El usuario demo es `owner`. **Las acciones protegidas** (`@RequierePermiso`) exigen 2FA para
+     owner/admin/contador: la primera vez que toques una de ellas verás `DOS_FACTORES_REQUERIDO`
+     hasta enrolar TOTP (sección de seguridad). El login y la navegación de lectura funcionan sin
+     enrolar. *(No es nuevo de P28: es la política de 2FA por rol de P18.)*
+3. Al entrar verás **Distribuidora Demo, C.A.** en el selector. El frontend guarda el access JWT
+   (acotado al tenant) y lo envía como `Authorization: Bearer` en cada llamada; el tenant/actor se
+   derivan del token firmado, no de cabeceras del cliente.
+   - **Multi-empresa**: si el usuario tiene varias empresas (membresías), el selector las lista;
+     cambiar de empresa **re-emite un token acotado** validando la membresía. Dentro del tenant, si
+     hay varias empresas (RIF) aparece un segundo selector para elegir la empresa de trabajo.
+4. En la portada, el widget **“Tasa del día”** debe mostrar **Bs 40,00000000** (la tasa sembrada).
    - Prueba la **carga manual**: pulsa **“Cargar tasa manual”**, ingresa una tasa, una fecha y un
      **motivo** (obligatorio, queda auditado), y guarda. El widget se refresca con tu valor.
 
-> Si ves “No se pudo obtener la tasa del día” es porque **no has entrado** a una empresa (la API
-> exige contexto de tenant). Pulsa “Entrar” primero.
+> Si ves “No se pudo obtener la tasa del día” o un 401, es porque **no has iniciado sesión** (la API
+> exige el `Authorization: Bearer`). Entra primero por `/login`.
 
 ---
 
@@ -196,11 +206,12 @@ La base del negocio. Crea, en este orden:
 ---
 
 ## 7. Límites conocidos (aún no construido)
-- **Login real (P27)**: la API ya expone `/auth/*` (login con Argon2, JWT corto + refresh rotativo,
-  logout, recuperación, 2FA como segundo paso, rate-limit/lockout). Probalo con el usuario demo
-  (`demo@contave.test` / `demo-contave-12345`) tras `pnpm db:seed-demo`. Requiere `AUTH_JWT_SECRET`.
-  El front todavía entra con el botón demo y el tenant se sigue tomando de cabeceras: **derivar
-  tenant/actor desde el JWT y cablear el front es P28** (cierra el `TODO(auth)`).
+- **Login real (P27/P28)**: construido y cableado al front. La API expone `/auth/*` (login Argon2,
+  JWT corto acotado al tenant + refresh rotativo, logout, recuperación, 2FA, `empresas`,
+  `cambiar-empresa`) y el contexto de tenant/actor se deriva del JWT. Entra por `/login` con el
+  usuario demo (`demo@contave.test` / `demo-contave-12345`) tras `pnpm db:seed-demo`. Requiere
+  `AUTH_JWT_SECRET` (≥32 bytes). Pendiente futuro: verificación de email (P29) y mailer de
+  recuperación (hoy el token de reset se devuelve en dev).
 - **Jobs automáticos** (captura BCV diaria, remisión al SENIAT): requieren **Redis**. Sin Redis,
   usa la **carga manual** de tasa y los disparos manuales donde existan.
 - **2FA**: requiere `APP_ENCRYPTION_KEY`.

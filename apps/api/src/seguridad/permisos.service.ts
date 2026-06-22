@@ -1,8 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../db/database.service';
-import { memberships, rolePermissions } from '../db/schema';
+import { memberships, rolePermissions, tenants } from '../db/schema';
 import { withTenant } from '../tenant/with-tenant';
+import { withUser } from '../tenant/with-user';
+
+/** Una empresa (tenant) donde el usuario tiene membresía activa, con su rol allí. */
+export interface MembresiaEmpresa {
+  tenantId: string;
+  nombre: string;
+  rol: string;
+}
 
 /**
  * Resuelve la autorización RBAC por ACCIÓN (regla 13, docs/05 §6). La matriz rol→permisos vive en
@@ -61,6 +69,29 @@ export class PermisosService {
       },
       tenantId,
     );
+  }
+
+  /**
+   * Empresas (tenants) donde el usuario tiene membresía activa, con su rol allí. Lectura PRE-tenant
+   * para el selector de empresa (P28): usa `withUser` + la política `memberships_self_read`. Devuelve
+   * solo tenants activos, ordenados de forma estable (antigüedad, luego nombre).
+   */
+  async membresiasDe(userId: string): Promise<MembresiaEmpresa[]> {
+    return withUser(this.database.db, userId, async (tx) => {
+      const filas = await tx
+        .select({ tenantId: memberships.tenantId, nombre: tenants.nombre, rol: memberships.role })
+        .from(memberships)
+        .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
+        .where(
+          and(
+            eq(memberships.userId, userId),
+            eq(memberships.status, 'active'),
+            eq(tenants.status, 'active'),
+          ),
+        )
+        .orderBy(tenants.createdAt, tenants.nombre);
+      return filas.map((f) => ({ tenantId: f.tenantId, nombre: f.nombre, rol: f.rol }));
+    });
   }
 
   /** ¿El actor tiene el permiso requerido en su tenant? */

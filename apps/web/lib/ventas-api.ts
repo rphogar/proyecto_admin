@@ -3,7 +3,7 @@
  * cobros. Reusa `ApiError` de los maestros para preservar el cuerpo del error (p.ej. los
  * `incumplimientos` del validador 00071/00102 o el exceso de saldo de una NC).
  */
-import { cabecerasTenant } from './contexto-sesion';
+import { cabecerasAuth } from './contexto-sesion';
 import { ApiError } from './maestros-api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -11,7 +11,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...cabecerasTenant(), ...(init?.headers ?? {}) },
+    headers: { 'Content-Type': 'application/json', ...cabecerasAuth(), ...(init?.headers ?? {}) },
   });
   if (!resp.ok) {
     let body: unknown;

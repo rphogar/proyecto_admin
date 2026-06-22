@@ -22,6 +22,12 @@ describe('jwt — firma y verificación HS256', () => {
     expect(claims?.exp).toBe(Math.floor(T0 / 1000) + 900);
   });
 
+  it('conserva el tenant activo (`tid`) en el round-trip (P28)', () => {
+    const tid = '00000000-0000-0000-0000-0000000000a1';
+    const token = firmarJwt({ sub: 'u1', scope: 'access', tid }, CLAVE, { ttlSeg: 900, ahoraMs: T0 });
+    expect(verificarJwt(token, CLAVE, T0 + 1_000)?.tid).toBe(tid);
+  });
+
   it('devuelve null si el token expiró', () => {
     const token = firmarJwt({ sub: 'u1', scope: 'access' }, CLAVE, { ttlSeg: 60, ahoraMs: T0 });
     expect(verificarJwt(token, CLAVE, T0 + 61_000)).toBeNull();

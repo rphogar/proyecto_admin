@@ -1,44 +1,63 @@
 /**
- * Capa de persistencia de la "sesión activa" en el navegador (localStorage). Provisional hasta la
- * auth real: hoy la sesión se obtiene del login demo (`/dev/sesion`) y guarda el tenant/empresa/
- * usuario elegidos. La API exige `x-tenant-id` en todas las rutas (middleware de tenant), así que
- * `cabecerasTenant()` es lo que hace que CUALQUIER llamada al backend funcione.
- *
- * TODO(auth): cuando exista login/JWT, estas cabeceras se reemplazan por el token y la sesión deja
- * de vivir en localStorage.
+ * Persistencia de la sesión real en el navegador (P28). Tras el login, la API entrega un access JWT
+ * (acotado a un tenant), un refresh rotativo y la lista de empresas del usuario. Todo eso vive aquí
+ * en `localStorage`; `cabecerasAuth()` adjunta el `Authorization: Bearer` que TODA llamada de
+ * negocio necesita (el middleware de tenant deriva el tenant/actor del token, no de cabeceras del
+ * cliente). El refresh rotativo y el cambio de empresa actualizan este blob.
  */
 
-export const CLAVES = {
-  tenantId: 'contave.tenantId',
-  companyId: 'contave.companyId',
-  userId: 'contave.userId',
-  empresaNombre: 'contave.empresaNombre',
-} as const;
+const CLAVE = 'contave.sesion';
 
-export interface SesionActiva {
+/** Una empresa (tenant) del usuario, con su rol — sale de `GET /auth/empresas`. */
+export interface EmpresaMembresia {
   tenantId: string;
+  nombre: string;
+  rol: string;
+}
+
+/** Una empresa (RIF) dentro del tenant activo — sale de `GET /maestros/companias`. */
+export interface Compania {
+  id: string;
+  rif: string;
+  razonSocial: string;
+}
+
+/** Sesión activa completa que se persiste. */
+export interface SesionActiva {
+  accessToken: string;
+  refreshToken: string;
+  /** Tenant al que está acotado el access actual (`tid`). */
+  tenantActivo: string;
+  /** Instante (epoch ms) en que expira el access; dispara el refresh proactivo. */
+  expiraEn: number;
+  /** Empresas (tenants) del usuario para el selector. */
+  empresas: EmpresaMembresia[];
+  /** Empresas (RIF) del tenant activo. */
+  companias: Compania[];
+  /** Empresa (RIF) activa dentro del tenant — la consumen ~20 pantallas. */
   companyId: string;
-  userId: string;
+  /** Nombre para mostrar en la barra (razón social de la empresa activa). */
   empresaNombre: string;
 }
 
-/** Lee la sesión de localStorage; `null` si falta cualquier pieza obligatoria o no hay `window`. */
+/** Lee la sesión de localStorage; `null` si falta o el JSON es inválido o no hay `window`. */
 export function leerSesion(): SesionActiva | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  const tenantId = window.localStorage.getItem(CLAVES.tenantId);
-  const companyId = window.localStorage.getItem(CLAVES.companyId);
-  const userId = window.localStorage.getItem(CLAVES.userId);
-  if (!tenantId || !companyId || !userId) {
+  const raw = window.localStorage.getItem(CLAVE);
+  if (!raw) {
     return null;
   }
-  return {
-    tenantId,
-    companyId,
-    userId,
-    empresaNombre: window.localStorage.getItem(CLAVES.empresaNombre) ?? companyId,
-  };
+  try {
+    const s = JSON.parse(raw) as SesionActiva;
+    if (!s.accessToken || !s.refreshToken || !s.tenantActivo) {
+      return null;
+    }
+    return s;
+  } catch {
+    return null;
+  }
 }
 
 /** Persiste la sesión activa. */
@@ -46,31 +65,26 @@ export function guardarSesion(s: SesionActiva): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(CLAVES.tenantId, s.tenantId);
-  window.localStorage.setItem(CLAVES.companyId, s.companyId);
-  window.localStorage.setItem(CLAVES.userId, s.userId);
-  window.localStorage.setItem(CLAVES.empresaNombre, s.empresaNombre);
+  window.localStorage.setItem(CLAVE, JSON.stringify(s));
 }
 
-/** Cierra la sesión (logout demo). */
+/** Cierra la sesión local (no llama a la API). */
 export function limpiarSesion(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  for (const clave of Object.values(CLAVES)) {
-    window.localStorage.removeItem(clave);
-  }
+  window.localStorage.removeItem(CLAVE);
 }
 
 /**
- * Cabeceras de contexto que TODO cliente HTTP debe enviar. Sin `x-tenant-id` la API responde 400.
- * Si aún no hay sesión, devuelve `{}` (la llamada fallará con 400, que es el comportamiento correcto
- * mientras no se haya entrado a una empresa).
+ * Cabeceras de autenticación que TODO cliente HTTP de negocio debe enviar. Sin un `Authorization`
+ * válido la API responde 401. Si aún no hay sesión, devuelve `{}` (la llamada fallará con 401, que
+ * es el comportamiento correcto mientras no se haya entrado).
  */
-export function cabecerasTenant(): Record<string, string> {
+export function cabecerasAuth(): Record<string, string> {
   const s = leerSesion();
   if (s === null) {
     return {};
   }
-  return { 'x-tenant-id': s.tenantId, 'x-user-id': s.userId };
+  return { Authorization: `Bearer ${s.accessToken}` };
 }

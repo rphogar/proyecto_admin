@@ -1,0 +1,125 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { login, login2fa } from '@/lib/auth-api';
+import { useEmpresaActiva } from '@/lib/empresa-activa';
+
+/**
+ * Login real (P28): email + password y, si el usuario tiene 2FA, un segundo paso con el código
+ * TOTP. Reemplaza al login demo retirado. Al entrar, fija la sesión (token acotado al tenant) y
+ * redirige al dashboard. El selector de empresa permite luego cambiar de empresa.
+ */
+export default function LoginPage() {
+  const router = useRouter();
+  const { iniciarSesion } = useEmpresaActiva();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [reto, setReto] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState('');
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const entrar = async (emitida: Parameters<typeof iniciarSesion>[0]) => {
+    await iniciarSesion(emitida);
+    router.push('/dashboard');
+  };
+
+  const onSubmitCredenciales = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCargando(true);
+    setError(null);
+    try {
+      const r = await login(email, password);
+      if (r.requiere2fa) {
+        setReto(r.reto);
+      } else {
+        await entrar(r);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const onSubmit2fa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (reto === null) {
+      return;
+    }
+    setCargando(true);
+    setError(null);
+    try {
+      await entrar(await login2fa(reto, codigo));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Código inválido');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
+      <h1 className="text-2xl font-bold tracking-tight">Ingresar a ContaVE</h1>
+
+      {reto === null ? (
+        <form onSubmit={(e) => void onSubmitCredenciales(e)} className="flex flex-col gap-3">
+          <label className="text-sm font-medium" htmlFor="email">
+            Correo
+          </label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <label className="text-sm font-medium" htmlFor="password">
+            Contraseña
+          </label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Button type="submit" disabled={cargando} className="mt-2">
+            {cargando ? 'Entrando…' : 'Entrar'}
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={(e) => void onSubmit2fa(e)} className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Ingresá el código de tu app de autenticación.
+          </p>
+          <label className="text-sm font-medium" htmlFor="codigo">
+            Código 2FA
+          </label>
+          <Input
+            id="codigo"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            required
+          />
+          <Button type="submit" disabled={cargando} className="mt-2">
+            {cargando ? 'Verificando…' : 'Verificar'}
+          </Button>
+        </form>
+      )}
+
+      {error !== null && (
+        <span role="alert" className="text-sm text-destructive">
+          {error}
+        </span>
+      )}
+    </main>
+  );
+}

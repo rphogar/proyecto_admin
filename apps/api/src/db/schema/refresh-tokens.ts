@@ -1,4 +1,5 @@
 import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
 import { users } from './users';
 
 /**
@@ -9,6 +10,10 @@ import { users } from './users';
  * Rotación: cada uso emite un par nuevo (misma `family_id`) y marca el anterior con `rotated_to`
  * (id del sucesor). Presentar un token ya rotado (`rotated_to` no nulo) o revocado (`revoked_at`)
  * es señal de robo → el `AuthService` revoca toda la `family_id`. Ver `auth/tokens-sesion.ts`.
+ *
+ * `tenant_id` (P28): el tenant/empresa al que está acotada la sesión. Al refrescar, el nuevo
+ * access se firma con este tenant (`tid`); cambiar de empresa emite una **sesión nueva** acotada
+ * al tenant destino (otra `family_id`). Nullable solo por compatibilidad con filas previas a P28.
  */
 export const refreshTokens = pgTable(
   'refresh_tokens',
@@ -17,6 +22,7 @@ export const refreshTokens = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
     familyId: uuid('family_id').notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),

@@ -7,7 +7,6 @@ import { ContabilidadModule } from './contabilidad/contabilidad.module';
 import { CumplimientoModule } from './cumplimiento/cumplimiento.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './db/database.module';
-import { DevModule } from './dev/dev.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { FacturacionDigitalModule } from './facturacion-digital/facturacion-digital.module';
 import { HealthController } from './health/health.controller';
@@ -23,11 +22,8 @@ import { TenantContextOpcionalMiddleware } from './tenant/tenant-context-opciona
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
 import { TesoreriaModule } from './tesoreria/tesoreria.module';
 
-// Utilidades de desarrollo (login demo): nunca en producción (regla 14: nada de atajos en prod).
-const DEV_MODULES = process.env.NODE_ENV === 'production' ? [] : [DevModule];
-
 @Module({
-  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, ...DEV_MODULES],
+  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {
@@ -36,14 +32,13 @@ export class AppModule implements NestModule {
     // muestre sin sesión, y un tenant logueado vea también su tasa MANUAL propia (caso 57).
     const RUTA_TASA_PUBLICA = { path: 'tasas/dia', method: RequestMethod.GET };
     consumer.apply(TenantContextOpcionalMiddleware).forRoutes(RUTA_TASA_PUBLICA);
-    // El contexto de tenant aplica a todo lo demás salvo /health (liveness), /dev/* (login demo sin
-    // tenant), /auth/* (autenticación PRE-tenant: login/refresh/recuperación, P27) y la ruta pública
-    // de la tasa (cubierta arriba por el middleware opcional).
+    // El contexto de tenant (derivado del JWT, P28) aplica a todo lo demás salvo /health (liveness),
+    // /auth/* (autenticación y cambio de empresa: verifican el Bearer a mano, ver AuthController) y
+    // la ruta pública de la tasa (cubierta arriba por el middleware opcional).
     consumer
       .apply(TenantContextMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.ALL },
-        { path: 'dev/(.*)', method: RequestMethod.ALL },
         { path: 'auth/(.*)', method: RequestMethod.ALL },
         RUTA_TASA_PUBLICA,
       )

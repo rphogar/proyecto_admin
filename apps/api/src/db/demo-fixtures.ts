@@ -1,9 +1,9 @@
 /**
  * Fixtures de la empresa DEMO (solo desarrollo). UUIDs fijos para que el seed (`db:seed-demo`)
- * y el endpoint `GET /dev/sesion` coincidan, y para que la guía de pruebas pueda referirlos.
+ * sea estable y la guía de pruebas pueda referirlos. En dev se entra con el LOGIN REAL (P28)
+ * usando estas credenciales sembradas (`usuario.email` / `usuario.password`).
  *
- * NO usar en producción: el seed se ejecuta a mano en dev; el módulo `dev` no se monta cuando
- * `NODE_ENV === 'production'`.
+ * NO usar en producción: el seed se ejecuta a mano en dev y nunca viaja a producción.
  */
 export const DEMO = {
   tenant: {

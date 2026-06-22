@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
   HttpException,
@@ -12,6 +13,7 @@ import { authEvents, passwordResetTokens, refreshTokens, users } from '../db/sch
 import { ControlBloqueoLogin } from '../seguridad/control-bloqueo-login';
 import { claveJwt, firmarJwt, verificarJwt } from '../seguridad/jwt';
 import { hashPassword, verifyPassword } from '../seguridad/password';
+import { type MembresiaEmpresa, PermisosService } from '../seguridad/permisos.service';
 import { SeguridadService } from '../seguridad/seguridad.service';
 import {
   clasificarRefresh,
@@ -45,16 +47,29 @@ export interface ParSesion {
   expiraEnSeg: number;
 }
 
-/** Resultado del paso 1 del login: o exige 2FA (reto), o ya entrega la sesión. */
+/**
+ * Sesión acotada a un tenant (P28): el par de tokens + la empresa activa a la que está acotado el
+ * access (`tid`) y la lista de empresas del usuario para el selector. La emite el login y el cambio
+ * de empresa.
+ */
+export interface SesionEmitida extends ParSesion {
+  tenantActivo: string;
+  empresas: MembresiaEmpresa[];
+}
+
+/** Resultado del paso 1 del login: o exige 2FA (reto), o ya entrega la sesión acotada. */
 export type ResultadoLogin =
   | { requiere2fa: true; reto: string }
-  | ({ requiere2fa: false } & ParSesion);
+  | ({ requiere2fa: false } & SesionEmitida);
 
 /**
  * Autenticación de identidad (P27, docs/05 §6). Login con Argon2, sesión por access JWT corto +
- * refresh rotativo revocable, logout, recuperación y 2FA TOTP (P18) como segundo paso. Estos
- * flujos son PRE-tenant: operan sobre `users` (identidad global, sin RLS) y se auditan en
- * `auth_events`. La derivación tenant/actor desde el JWT llega en P28 (`TODO(auth)`).
+ * refresh rotativo revocable, logout, recuperación y 2FA TOTP (P18) como segundo paso. La
+ * verificación de credenciales es PRE-tenant (opera sobre `users`, identidad global sin RLS); pero
+ * la sesión que se emite YA va **acotada a un tenant** (P28): el access lleva `tid` y la sesión
+ * recuerda su tenant en `refresh_tokens.tenant_id`. El login ata a la primera empresa del usuario y
+ * `cambiarEmpresa` re-emite acotado a otra membresía válida (`memberships`). Todo se audita en
+ * `auth_events`.
  *
  * El lockout vive en memoria del proceso (igual que el rate-limit de P18); en multi-instancia su
  * backend se sustituye por Redis conservando `ControlBloqueoLogin`.
@@ -66,6 +81,7 @@ export class AuthService {
   constructor(
     private readonly database: DatabaseService,
     private readonly seguridad: SeguridadService,
+    private readonly permisos: PermisosService,
   ) {}
 
   // ── Login (paso 1: email + password) ────────────────────────────────────────────────────────
@@ -134,10 +150,10 @@ export class AuthService {
 
     // Nota: un rol privilegiado (owner/admin/contador) que aún no enroló 2FA SÍ puede autenticarse
     // aquí (es identidad, pre-tenant), pero el `DosFactoresGuard` de P18 le bloquea las acciones
-    // protegidas hasta que complete el enrolamiento. El enforcement por tenant se afina en P28.
-    const { par } = await this.emitirSesion(usuario.id, randomUUID(), origen, ahora);
+    // protegidas hasta que complete el enrolamiento.
+    const sesion = await this.emitirSesionInicial(usuario.id, origen, ahora);
     await this.auditar({ tipo: 'login_ok', userId: usuario.id, origen, ahora });
-    return { requiere2fa: false, ...par };
+    return { requiere2fa: false, ...sesion };
   }
 
   // ── Login (paso 2: código 2FA) ──────────────────────────────────────────────────────────────
@@ -146,7 +162,7 @@ export class AuthService {
     codigo: string,
     origen: OrigenPeticion,
     ahora: Date = new Date(),
-  ): Promise<ParSesion> {
+  ): Promise<SesionEmitida> {
     const claims = verificarJwt(reto, claveJwt(), ahora.getTime());
     if (claims === null || claims.scope !== '2fa') {
       throw new UnauthorizedException({ codigo: 'RETO_2FA_INVALIDO', message: 'Reto de 2FA inválido o expirado' });
@@ -156,9 +172,9 @@ export class AuthService {
       await this.auditar({ tipo: '2fa_fail', userId: claims.sub, origen, ahora });
       throw new UnauthorizedException({ codigo: 'CODIGO_2FA_INVALIDO', message: 'Código de verificación inválido' });
     }
-    const { par } = await this.emitirSesion(claims.sub, randomUUID(), origen, ahora);
+    const sesion = await this.emitirSesionInicial(claims.sub, origen, ahora);
     await this.auditar({ tipo: 'login_ok', userId: claims.sub, origen, ahora, metadata: { paso: '2fa-ok' } });
-    return par;
+    return sesion;
   }
 
   // ── Refresh rotativo (con detección de robo) ────────────────────────────────────────────────
@@ -168,6 +184,7 @@ export class AuthService {
       .select({
         id: refreshTokens.id,
         userId: refreshTokens.userId,
+        tenantId: refreshTokens.tenantId,
         familyId: refreshTokens.familyId,
         expiresAt: refreshTokens.expiresAt,
         revokedAt: refreshTokens.revokedAt,
@@ -195,9 +212,20 @@ export class AuthService {
       throw new UnauthorizedException({ codigo: 'REFRESH_EXPIRADO', message: 'Refresh token expirado' });
     }
 
+    // El nuevo access hereda el tenant de la sesión (P28). Si la fila es previa a P28 (sin tenant),
+    // se reacota al tenant por defecto del usuario.
+    const tenantActivo = fila.tenantId ?? (await this.tenantPorDefecto(fila.userId));
+
     // Rotación atómica: marca el actual como rotado al sucesor y emite el nuevo par en la familia.
     return this.database.db.transaction(async (tx) => {
-      const { par, refreshId } = await this.emitirSesion(fila.userId, fila.familyId, origen, ahora, tx);
+      const { par, refreshId } = await this.emitirSesion(
+        fila.userId,
+        fila.familyId,
+        tenantActivo,
+        origen,
+        ahora,
+        tx,
+      );
       await tx
         .update(refreshTokens)
         .set({ rotatedTo: refreshId })
@@ -205,6 +233,45 @@ export class AuthService {
       await this.auditar({ tipo: 'refresh_rotate', userId: fila.userId, origen, ahora, tx });
       return par;
     });
+  }
+
+  // ── Cambio de empresa (re-emite un token acotado a otra membresía) ──────────────────────────────
+  /**
+   * Cambia la empresa/tenant activa de un usuario con varias membresías (P28, docs/05 §2). Valida
+   * que exista membresía ACTIVA en el tenant destino (contra `memberships`, la fuente autoritativa);
+   * si no la hay, audita el intento y rechaza con 403 — **es imposible forzar un tenant sin
+   * membresía**. Si la hay, emite una **sesión nueva** (otra `family_id`) acotada al tenant destino.
+   * La sesión anterior se deja vivir (sesiones independientes; expiran solas).
+   */
+  async cambiarEmpresa(
+    userId: string,
+    tenantDestino: string,
+    origen: OrigenPeticion,
+    ahora: Date = new Date(),
+  ): Promise<SesionEmitida> {
+    const rol = await this.permisos.rolDelActor(tenantDestino, userId);
+    if (rol === null) {
+      await this.auditar({
+        tipo: 'cambio_empresa_denegado',
+        userId,
+        origen,
+        ahora,
+        metadata: { tenantDestino },
+      });
+      throw new ForbiddenException({
+        codigo: 'SIN_MEMBRESIA',
+        message: 'No tenés una membresía activa en esa empresa',
+      });
+    }
+    const sesion = await this.emitirSesionEmpresa(userId, tenantDestino, origen, ahora);
+    await this.auditar({
+      tipo: 'cambio_empresa',
+      userId,
+      origen,
+      ahora,
+      metadata: { tenantDestino, rol },
+    });
+    return sesion;
   }
 
   // ── Logout (revoca el refresh presentado y su familia) ──────────────────────────────────────
@@ -298,18 +365,71 @@ export class AuthService {
   // ── Internos ────────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Emite un access JWT + un refresh nuevo dentro de `familyId`, persistiendo el hash del refresh.
-   * Devuelve también el id de la fila insertada (lo usa la rotación para enlazar `rotated_to`).
+   * Emite la sesión INICIAL tras autenticar (login / 2FA): resuelve las empresas del usuario, ata
+   * la sesión a una por defecto (la primera; el usuario cambia con `cambiarEmpresa`) y devuelve los
+   * tokens + la lista para el selector. Sin membresías activas → 403 (no hay empresa que operar).
+   */
+  private async emitirSesionInicial(
+    userId: string,
+    origen: OrigenPeticion,
+    ahora: Date,
+  ): Promise<SesionEmitida> {
+    const empresas = await this.permisos.membresiasDe(userId);
+    const empresaDefecto = empresas[0];
+    if (empresaDefecto === undefined) {
+      throw new ForbiddenException({
+        codigo: 'SIN_EMPRESAS',
+        message: 'Tu usuario no tiene membresía en ninguna empresa; contactá al administrador',
+      });
+    }
+    return this.emitirSesionEmpresa(userId, empresaDefecto.tenantId, origen, ahora, empresas);
+  }
+
+  /**
+   * Emite una sesión NUEVA (otra `family_id`) acotada a `tenantActivo` y devuelve los tokens + la
+   * lista de empresas. Si `empresas` ya se resolvió (login), se reutiliza; si no (cambio de
+   * empresa), se vuelve a leer para que el selector quede al día.
+   */
+  private async emitirSesionEmpresa(
+    userId: string,
+    tenantActivo: string,
+    origen: OrigenPeticion,
+    ahora: Date,
+    empresas?: MembresiaEmpresa[],
+  ): Promise<SesionEmitida> {
+    const lista = empresas ?? (await this.permisos.membresiasDe(userId));
+    const { par } = await this.emitirSesion(userId, randomUUID(), tenantActivo, origen, ahora);
+    return { ...par, tenantActivo, empresas: lista };
+  }
+
+  /** Tenant por defecto del usuario (primera membresía activa); 403 si no tiene ninguna. */
+  private async tenantPorDefecto(userId: string): Promise<string> {
+    const empresas = await this.permisos.membresiasDe(userId);
+    const primera = empresas[0];
+    if (primera === undefined) {
+      throw new ForbiddenException({
+        codigo: 'SIN_EMPRESAS',
+        message: 'Tu usuario no tiene membresía en ninguna empresa; contactá al administrador',
+      });
+    }
+    return primera.tenantId;
+  }
+
+  /**
+   * Emite un access JWT (acotado al tenant `tid`) + un refresh nuevo dentro de `familyId`,
+   * persistiendo el hash del refresh y el tenant de la sesión. Devuelve también el id de la fila
+   * insertada (lo usa la rotación para enlazar `rotated_to`).
    */
   private async emitirSesion(
     userId: string,
     familyId: string,
+    tenantActivo: string,
     origen: OrigenPeticion,
     ahora: Date,
     tx?: DatabaseTx,
   ): Promise<{ par: ParSesion; refreshId: string }> {
     const ttl = ttlAccessSeg();
-    const accessToken = firmarJwt({ sub: userId, scope: 'access' }, claveJwt(), {
+    const accessToken = firmarJwt({ sub: userId, scope: 'access', tid: tenantActivo }, claveJwt(), {
       ttlSeg: ttl,
       ahoraMs: ahora.getTime(),
     });
@@ -319,6 +439,7 @@ export class AuthService {
       .insert(refreshTokens)
       .values({
         userId,
+        tenantId: tenantActivo,
         familyId,
         tokenHash: refresh.hash,
         expiresAt: new Date(ahora.getTime() + ttlRefreshSeg() * 1000),
