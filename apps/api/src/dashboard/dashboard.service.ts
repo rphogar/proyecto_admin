@@ -102,6 +102,7 @@ export interface DashboardDto {
   readonly cxc: { readonly totalPorCobrar: MontoDoble; readonly totalVencido: MontoDoble; readonly topDeudores: DeudorDashboard[] };
   readonly cxp: { readonly totalPorPagar: MontoDoble; readonly proximas: ProveedorPorPagar[] };
   readonly tasaBcv: { readonly moneda: string; readonly rate: string | null; readonly rateDate: string | null; readonly variacionPct: string | null; readonly frescura: string } | null;
+  readonly tasaBcvEur: { readonly moneda: string; readonly rate: string | null; readonly rateDate: string | null; readonly variacionPct: string | null; readonly frescura: string } | null;
   readonly semaforoFiscal: { readonly obligaciones: ObligacionFiscal[] };
   readonly topProductos: ProductoTop[];
   readonly alertas: AlertaDashboard[];
@@ -136,8 +137,9 @@ export class DashboardService {
       }),
     ]);
 
-    const [tasaBcv, semaforoFiscal] = await Promise.all([
-      this.tasaBcv(hoy),
+    const [tasaBcv, tasaBcvEur, semaforoFiscal] = await Promise.all([
+      this.tasaBcv(hoy, 'USD'),
+      this.tasaBcv(hoy, 'EUR'),
       this.semaforoFiscal(companyId, hoy, anio, mes),
     ]);
 
@@ -152,6 +154,7 @@ export class DashboardService {
       },
       ...restoDelLedger,
       tasaBcv,
+      tasaBcvEur,
       semaforoFiscal,
       alertas,
     };
@@ -255,14 +258,14 @@ export class DashboardService {
   }
 
   // ── Tasa BCV del día + variación contra la publicación anterior ───────────────
-  private async tasaBcv(hoy: string): Promise<DashboardDto['tasaBcv']> {
-    const dia = await this.tasas.tasaDelDia('USD', hoy);
+  private async tasaBcv(hoy: string, moneda: 'USD' | 'EUR'): Promise<DashboardDto['tasaBcv']> {
+    const dia = await this.tasas.tasaDelDia(moneda, hoy);
     const variacionPct = await withTenant(this.database.db, async (tx) => {
       if (dia.rate === null || dia.rateDate === null) return null;
       const [previa] = await tx
         .select({ rate: exchangeRates.rate })
         .from(exchangeRates)
-        .where(and(eq(exchangeRates.currency, 'USD'), lte(exchangeRates.rateDate, dia.rateDate), sql`${exchangeRates.rateDate} <> ${dia.rateDate}`))
+        .where(and(eq(exchangeRates.currency, moneda), lte(exchangeRates.rateDate, dia.rateDate), sql`${exchangeRates.rateDate} <> ${dia.rateDate}`))
         .orderBy(desc(exchangeRates.rateDate), desc(exchangeRates.capturedAt))
         .limit(1);
       return previa === undefined ? null : variacion(new Decimal(dia.rate), new Decimal(previa.rate));

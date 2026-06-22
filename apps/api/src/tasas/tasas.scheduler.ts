@@ -33,7 +33,11 @@ export class TasasScheduler implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     if (REDIS_URL === '') {
-      this.logger.log('REDIS_URL ausente: scheduler de tasas BCV inactivo (captura manual disponible)');
+      // Sin Redis (dev/local: memoria docker-no-disponible-local) no hay cron. Para que la tasa
+      // del día (USD y EUR) no quede pegada al valor sembrado, disparamos UNA captura best-effort
+      // al arranque. Si el BCV falla (SSL/red/cambio de marcado), se conserva lo sembrado/manual.
+      this.logger.log('REDIS_URL ausente: scheduler de tasas BCV inactivo; captura al arranque + manual disponible');
+      void this.capturarAlArranque();
       return;
     }
     const connection = opcionesRedis(REDIS_URL);
@@ -53,5 +57,16 @@ export class TasasScheduler implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.worker?.close();
     await this.queue?.close();
+  }
+
+  /** Captura única al arranque cuando no hay Redis. Best-effort: nunca tumba el arranque. */
+  private async capturarAlArranque(): Promise<void> {
+    try {
+      const r = await this.captura.capturar();
+      this.logger.log(`captura BCV al arranque: ${r.status} (insertadas=${r.insertadas})`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`captura BCV al arranque falló (se opera con la última tasa disponible): ${msg}`);
+    }
   }
 }

@@ -86,6 +86,7 @@ export interface DashboardDto {
   cxc: { totalPorCobrar: MontoDoble; totalVencido: MontoDoble; topDeudores: DeudorDashboard[] };
   cxp: { totalPorPagar: MontoDoble; proximas: ProveedorPorPagar[] };
   tasaBcv: { moneda: string; rate: string | null; rateDate: string | null; variacionPct: string | null; frescura: string } | null;
+  tasaBcvEur: { moneda: string; rate: string | null; rateDate: string | null; variacionPct: string | null; frescura: string } | null;
   semaforoFiscal: { obligaciones: ObligacionFiscal[] };
   topProductos: ProductoTop[];
   alertas: AlertaDashboard[];

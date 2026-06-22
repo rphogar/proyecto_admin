@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { fechaFiscal } from '@contave/shared';
+import { Decimal, fechaFiscal } from '@contave/shared';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { DatabaseService, type DatabaseTx } from '../db/database.service';
 import { exchangeRates } from '../db/schema';
@@ -96,8 +96,11 @@ export class CapturaBcvService {
       )
       .orderBy(desc(exchangeRates.capturedAt));
 
-    // Idempotencia (caso 11): si ya existe esta misma tasa para el día, no se hace nada.
-    if (existentes.some((e) => e.rate === tasa.rate)) return 'duplicada';
+    // Idempotencia (caso 11): si ya existe esta misma tasa para el día, no se hace nada. La
+    // comparación es NUMÉRICA: la BD devuelve NUMERIC(20,8) con ceros de escala ("612.43320000")
+    // y el parser entrega el valor sin ceros sobrantes ("612.4332"); un `===` de strings los vería
+    // distintos y rompería contra el índice único de idempotencia.
+    if (existentes.some((e) => new Decimal(e.rate).eq(tasa.rate))) return 'duplicada';
 
     // `existentes` viene ordenado por captured_at DESC: la primera es la vigente a corregir.
     const previa = existentes[0] ?? null;

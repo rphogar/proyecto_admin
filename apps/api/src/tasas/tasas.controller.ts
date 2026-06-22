@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { PermiteSin2FA } from '../seguridad/dos-factores.guard';
 import { CapturaBcvService, type ResultadoCaptura } from './captura-bcv.service';
 import { parsearTasaManual, validarFecha, validarMoneda } from './dto';
 import {
@@ -18,7 +19,12 @@ export class TasasController {
     private readonly captura: CapturaBcvService,
   ) {}
 
-  /** Tasa del día (o de `fecha`) con estado de frescura para el banner (caso 57). */
+  /**
+   * Tasa del día (o de `fecha`) con estado de frescura para el banner (caso 57). Lectura PÚBLICA de
+   * un dato global (tasa BCV): exenta de 2FA para que la landing la muestre y un owner sin enrolar
+   * el segundo factor aún vea la tasa informativa (no toca dinero ni datos del tenant).
+   */
+  @PermiteSin2FA()
   @Get('dia')
   async tasaDelDia(
     @Query('moneda') moneda?: string,

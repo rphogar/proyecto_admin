@@ -1,3 +1,4 @@
+import '../load-env';
 import postgres from 'postgres';
 import { DEMO } from './demo-fixtures';
 
@@ -66,10 +67,13 @@ export async function seedDemo(ownerUrl: string): Promise<void> {
       ON CONFLICT DO NOTHING
     `;
 
-    // Tasa BCV global del día (tenant_id NULL) para que la "tasa del día" muestre algo de entrada.
+    // Tasas BCV globales del día (tenant_id NULL) para que la "tasa del día" muestre algo de
+    // entrada en USD y EUR, aun si la captura en vivo del BCV no corrió todavía (respaldo demo).
     await sql`
       INSERT INTO "exchange_rates" ("tenant_id", "currency", "rate", "rate_date", "source")
-      VALUES (NULL, 'USD', '40.00000000', CURRENT_DATE, 'BCV')
+      VALUES
+        (NULL, 'USD', '40.00000000', CURRENT_DATE, 'BCV'),
+        (NULL, 'EUR', '45.00000000', CURRENT_DATE, 'BCV')
       ON CONFLICT DO NOTHING
     `;
   } finally {

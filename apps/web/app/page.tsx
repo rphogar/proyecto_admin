@@ -10,8 +10,9 @@ export default function Home() {
         Sistema administrativo-contable-fiscal multimoneda para PYMEs venezolanas. Multimoneda
         nativa (VES fiscal / USD gerencial), cumplimiento SENIAT.
       </p>
-      <div className="w-full max-w-sm text-left">
+      <div className="grid w-full max-w-2xl gap-4 text-left sm:grid-cols-2">
         <TasaDelDia moneda="USD" />
+        <TasaDelDia moneda="EUR" />
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Button asChild>

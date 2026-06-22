@@ -44,10 +44,15 @@ function extraerPublishedAt(html: string): Date | null {
 }
 
 function extraerTasaDeBloque(html: string, idMoneda: string): string | null {
-  // Bloque desde id="<moneda>" hasta el primer </div>; dentro, el primer número con coma.
-  const bloque = new RegExp(`id=["']${idMoneda}["'][\\s\\S]*?<\\/div>`, 'i').exec(html);
-  if (bloque === null) return null;
-  const num = /(\d{1,3}(?:\.\d{3})*,\d+|\d+,\d+)/.exec(bloque[0]);
+  // Desde id="<moneda>" hasta el PRIMER <strong>…</strong> (donde el BCV pone la tasa). No se corta
+  // en el primer </div>: el marcado actual cierra el div de la etiqueta (USD/EUR) ANTES del número,
+  // y el <strong> trae atributos (`class="strong-tb"`). Dentro del <strong>, el primer número con coma.
+  const bloque = new RegExp(`id=["']${idMoneda}["'][\\s\\S]*?<strong[^>]*>([\\s\\S]*?)<\\/strong>`, 'i').exec(
+    html,
+  );
+  const interiorStrong = bloque?.[1];
+  if (interiorStrong === undefined) return null;
+  const num = /(\d{1,3}(?:\.\d{3})*,\d+|\d+,\d+)/.exec(interiorStrong);
   if (num === null) return null;
   return normalizarNumeroVe(num[0]);
 }

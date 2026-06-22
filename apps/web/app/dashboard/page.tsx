@@ -186,24 +186,35 @@ function Utilidad({ data, vista }: { data: DashboardDto; vista: Vista }) {
   );
 }
 
+type TasaCard = DashboardDto['tasaBcv'];
+
+function TasaLinea({ t }: { t: TasaCard }) {
+  if (t === null || t.rate === null) {
+    return <p className="text-sm text-muted-foreground">Sin tasa registrada.</p>;
+  }
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="flex items-baseline gap-2">
+        <span className="text-2xl font-semibold tabular-nums">Bs {t.rate.replace('.', ',')}</span>
+        <Variacion pct={t.variacionPct} />
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {t.moneda}/VES · vigente {t.rateDate}
+        {t.frescura !== 'fresca' && <span className="ml-1 text-amber-600">· tasa {t.frescura}</span>}
+      </p>
+    </div>
+  );
+}
+
 function TasaBcv({ data }: { data: DashboardDto }) {
-  const t = data.tasaBcv;
   return (
     <Card titulo="Tasa BCV del día">
-      {t === null || t.rate === null ? (
-        <p className="text-sm text-muted-foreground">Sin tasa registrada.</p>
-      ) : (
-        <>
-          <p className="flex items-baseline gap-2">
-            <span className="text-3xl font-semibold tabular-nums">Bs {t.rate.replace('.', ',')}</span>
-            <Variacion pct={t.variacionPct} />
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t.moneda}/VES · vigente {t.rateDate}
-            {t.frescura !== 'fresca' && <span className="ml-1 text-amber-600">· tasa {t.frescura}</span>}
-          </p>
-        </>
-      )}
+      <div className="flex flex-col gap-3">
+        <TasaLinea t={data.tasaBcv} />
+        <div className="border-t pt-3">
+          <TasaLinea t={data.tasaBcvEur} />
+        </div>
+      </div>
     </Card>
   );
 }

@@ -83,7 +83,8 @@ describe('Dashboard del dueño — integración DB (P14)', () => {
     // Tasas BCV globales (tenant NULL) con dos fechas distintas y antiguas (siempre ≤ hoy) para la variación.
     await tdb.ownerSql`insert into exchange_rates (id, currency, rate, rate_date, source) values
       (${randomUUID()}, 'USD', 35, '2020-01-01', 'BCV'),
-      (${randomUUID()}, 'USD', 36, '2020-01-02', 'BCV')`;
+      (${randomUUID()}, 'USD', 36, '2020-01-02', 'BCV'),
+      (${randomUUID()}, 'EUR', 40, '2020-01-02', 'BCV')`;
 
     await withTenant(tdb.appDb, (tx) => seedPlanDeCuentas(tx, { tenantId: tenantA, companyId: companyA }), tenantA);
     const filas = await tdb.ownerSql`select codigo, id from accounts where company_id = ${companyA}`;
@@ -134,8 +135,14 @@ describe('Dashboard del dueño — integración DB (P14)', () => {
   it('tasa BCV del día con variación contra la publicación anterior', async () => {
     const d = await como(tenantA, () => dashboard.resumen(companyA));
     expect(d.tasaBcv).not.toBeNull();
+    expect(d.tasaBcv!.moneda).toBe('USD');
     expect(Number(d.tasaBcv!.rate)).toBe(36);
     expect(d.tasaBcv!.variacionPct).toBe('2.9'); // (36 − 35) / 35 ≈ 2.86 %
+    // EUR se expone aparte (sin publicación previa → sin variación).
+    expect(d.tasaBcvEur).not.toBeNull();
+    expect(d.tasaBcvEur!.moneda).toBe('EUR');
+    expect(Number(d.tasaBcvEur!.rate)).toBe(40);
+    expect(d.tasaBcvEur!.variacionPct).toBeNull();
   });
 
   it('semáforo fiscal expone las obligaciones de IVA (período en curso y anterior)', async () => {
@@ -147,7 +154,7 @@ describe('Dashboard del dueño — integración DB (P14)', () => {
 
   it('devuelve todos los widgets de la vista (estructura completa)', async () => {
     const d = await como(tenantA, () => dashboard.resumen(companyA));
-    expect(Object.keys(d).sort()).toEqual(['alertas', 'caja', 'cxc', 'cxp', 'fecha', 'semaforoFiscal', 'tasaBcv', 'topProductos', 'utilidadMes', 'ventas'].sort());
+    expect(Object.keys(d).sort()).toEqual(['alertas', 'caja', 'cxc', 'cxp', 'fecha', 'semaforoFiscal', 'tasaBcv', 'tasaBcvEur', 'topProductos', 'utilidadMes', 'ventas'].sort());
     expect(d.ventas).toHaveProperty('dia');
     expect(d.ventas).toHaveProperty('semana');
     expect(d.ventas).toHaveProperty('mes');

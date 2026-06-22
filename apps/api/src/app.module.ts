@@ -18,6 +18,7 @@ import { NominaModule } from './nomina/nomina.module';
 import { PortalModule } from './portal/portal.module';
 import { SeguridadModule } from './seguridad/seguridad.module';
 import { TasasModule } from './tasas/tasas.module';
+import { TenantContextOpcionalMiddleware } from './tenant/tenant-context-opcional.middleware';
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
 import { TesoreriaModule } from './tesoreria/tesoreria.module';
 
@@ -30,12 +31,18 @@ const DEV_MODULES = process.env.NODE_ENV === 'production' ? [] : [DevModule];
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // El contexto de tenant aplica a todo salvo /health (liveness) y /dev/* (login demo sin tenant).
+    // `GET /tasas/dia` lee la tasa BCV (global): contexto OPCIONAL para que la landing pública la
+    // muestre sin sesión, y un tenant logueado vea también su tasa MANUAL propia (caso 57).
+    const RUTA_TASA_PUBLICA = { path: 'tasas/dia', method: RequestMethod.GET };
+    consumer.apply(TenantContextOpcionalMiddleware).forRoutes(RUTA_TASA_PUBLICA);
+    // El contexto de tenant aplica a todo lo demás salvo /health (liveness), /dev/* (login demo sin
+    // tenant) y la ruta pública de la tasa (cubierta arriba por el middleware opcional).
     consumer
       .apply(TenantContextMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.ALL },
         { path: 'dev/(.*)', method: RequestMethod.ALL },
+        RUTA_TASA_PUBLICA,
       )
       .forRoutes('*');
   }

@@ -9,7 +9,7 @@ import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
 import { exchangeRates } from '../db/schema';
-import { requireTenantContext } from '../tenant/tenant-context';
+import { getTenantContext, requireTenantContext } from '../tenant/tenant-context';
 import { withTenant } from '../tenant/with-tenant';
 import type { CrearTasaManualInput } from './dto';
 import type { MonedaBcv } from './fuentes/fuente-bcv';
@@ -69,17 +69,26 @@ export class TasasService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Tasa aplicable a `fecha` para `moneda`: la última con `rate_date <= fecha` (caso 1). */
+  /**
+   * Tasa aplicable a `fecha` para `moneda`: la última con `rate_date <= fecha` (caso 1). Lectura
+   * tolerante a la ausencia de sesión: si hay contexto de tenant, mezcla globales BCV + tasa propia
+   * (MANUAL, caso 57); si no lo hay (landing pública), lee solo globales (RLS: `tenant_id IS NULL`).
+   */
   async rateForDb(moneda: MonedaBcv, fecha: string): Promise<FilaExchangeRate | null> {
-    return withTenant(this.database.db, async (tx) => {
-      const [fila] = await tx
-        .select()
-        .from(exchangeRates)
-        .where(and(eq(exchangeRates.currency, moneda), lte(exchangeRates.rateDate, fecha)))
-        .orderBy(desc(exchangeRates.rateDate), desc(exchangeRates.capturedAt))
-        .limit(1);
-      return fila ?? null;
-    });
+    const tenantId = getTenantContext()?.tenantId ?? '';
+    return withTenant(
+      this.database.db,
+      async (tx) => {
+        const [fila] = await tx
+          .select()
+          .from(exchangeRates)
+          .where(and(eq(exchangeRates.currency, moneda), lte(exchangeRates.rateDate, fecha)))
+          .orderBy(desc(exchangeRates.rateDate), desc(exchangeRates.capturedAt))
+          .limit(1);
+        return fila ?? null;
+      },
+      tenantId,
+    );
   }
 
   /** Tasa del día (default hoy en Caracas) + estado de frescura para el banner (caso 57). */
