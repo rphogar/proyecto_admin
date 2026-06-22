@@ -16,6 +16,8 @@ export const DEMO = {
     email: 'demo@contave.test',
     nombre: 'Usuario Demo',
     role: 'owner',
+    /** Contraseña del usuario demo para probar el login real (P27). Solo desarrollo. */
+    password: 'demo-contave-12345',
   },
   empresa: {
     id: '00000000-0000-0000-0000-0000000000c1',

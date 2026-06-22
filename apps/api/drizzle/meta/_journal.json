@@ -484,6 +484,20 @@
       "when": 1782007355150,
       "tag": "0068_remision_idempotencia_observabilidad",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1782166094710,
+      "tag": "0069_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1782166095710,
+      "tag": "0070_auth_grants",
+      "breakpoints": true
     }
   ]
 }

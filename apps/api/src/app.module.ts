@@ -1,5 +1,6 @@
 import { type MiddlewareConsumer, Module, type NestModule, RequestMethod } from '@nestjs/common';
 import { AuditModule } from './audit/audit.module';
+import { AuthModule } from './auth/auth.module';
 import { CobrosModule } from './cobros/cobros.module';
 import { ComprasModule } from './compras/compras.module';
 import { ContabilidadModule } from './contabilidad/contabilidad.module';
@@ -26,7 +27,7 @@ import { TesoreriaModule } from './tesoreria/tesoreria.module';
 const DEV_MODULES = process.env.NODE_ENV === 'production' ? [] : [DevModule];
 
 @Module({
-  imports: [DatabaseModule, AuditModule, SeguridadModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, ...DEV_MODULES],
+  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, ...DEV_MODULES],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {
@@ -36,12 +37,14 @@ export class AppModule implements NestModule {
     const RUTA_TASA_PUBLICA = { path: 'tasas/dia', method: RequestMethod.GET };
     consumer.apply(TenantContextOpcionalMiddleware).forRoutes(RUTA_TASA_PUBLICA);
     // El contexto de tenant aplica a todo lo demás salvo /health (liveness), /dev/* (login demo sin
-    // tenant) y la ruta pública de la tasa (cubierta arriba por el middleware opcional).
+    // tenant), /auth/* (autenticación PRE-tenant: login/refresh/recuperación, P27) y la ruta pública
+    // de la tasa (cubierta arriba por el middleware opcional).
     consumer
       .apply(TenantContextMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.ALL },
         { path: 'dev/(.*)', method: RequestMethod.ALL },
+        { path: 'auth/(.*)', method: RequestMethod.ALL },
         RUTA_TASA_PUBLICA,
       )
       .forRoutes('*');

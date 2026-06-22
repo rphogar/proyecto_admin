@@ -52,6 +52,12 @@ API_PORT=3001
 WEB_ORIGIN=http://localhost:3000
 # Solo si vas a probar 2FA (enrolamiento TOTP). 32 bytes en base64/hex. Opcional para el resto.
 # APP_ENCRYPTION_KEY=<32 bytes base64>
+# Autenticación real (P27): clave de firma del JWT de sesión (mínimo 32 bytes). Obligatoria para
+# usar /auth/*; jamás se commitea (regla 14).
+AUTH_JWT_SECRET=<cadena aleatoria de >= 32 caracteres>
+# Opcionales (tienen default): TTL del access token (seg, 900=15min) y del refresh (seg, 7 días).
+# AUTH_ACCESS_TTL=900
+# AUTH_REFRESH_TTL=604800
 ```
 
 Y `apps/web/.env.local`:
@@ -190,8 +196,11 @@ La base del negocio. Crea, en este orden:
 ---
 
 ## 7. Límites conocidos (aún no construido)
-- **Login real**: hoy se entra con el botón demo. No hay usuario/contraseña ni control de a qué
-  empresas puede acceder cada usuario (eso es el `TODO(auth)`).
+- **Login real (P27)**: la API ya expone `/auth/*` (login con Argon2, JWT corto + refresh rotativo,
+  logout, recuperación, 2FA como segundo paso, rate-limit/lockout). Probalo con el usuario demo
+  (`demo@contave.test` / `demo-contave-12345`) tras `pnpm db:seed-demo`. Requiere `AUTH_JWT_SECRET`.
+  El front todavía entra con el botón demo y el tenant se sigue tomando de cabeceras: **derivar
+  tenant/actor desde el JWT y cablear el front es P28** (cierra el `TODO(auth)`).
 - **Jobs automáticos** (captura BCV diaria, remisión al SENIAT): requieren **Redis**. Sin Redis,
   usa la **carga manual** de tasa y los disparos manuales donde existan.
 - **2FA**: requiere `APP_ENCRYPTION_KEY`.

@@ -5,6 +5,10 @@ export * from './tenants';
 export * from './users';
 export * from './rbac';
 export * from './memberships';
+// P27 — Autenticación: sesión rotativa, recuperación y bitácora de identidad (tablas globales).
+export * from './refresh-tokens';
+export * from './password-reset-tokens';
+export * from './auth-events';
 export * from './companies';
 export * from './branches';
 export * from './fiscal-params';

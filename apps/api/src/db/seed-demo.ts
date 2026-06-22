@@ -1,5 +1,6 @@
 import '../load-env';
 import postgres from 'postgres';
+import { hashPassword } from '../seguridad/password';
 import { DEMO } from './demo-fixtures';
 
 /**
@@ -20,10 +21,13 @@ export async function seedDemo(ownerUrl: string): Promise<void> {
       VALUES (${DEMO.tenant.id}, ${DEMO.tenant.nombre}, ${DEMO.tenant.slug})
       ON CONFLICT ("id") DO NOTHING
     `;
+    // Contraseña demo hasheada con Argon2id (P27) para probar el login real; se re-aplica en cada
+    // seed (idempotente) por si el usuario ya existía sin hash.
+    const passwordHash = await hashPassword(DEMO.usuario.password);
     await sql`
-      INSERT INTO "users" ("id", "email", "nombre")
-      VALUES (${DEMO.usuario.id}, ${DEMO.usuario.email}, ${DEMO.usuario.nombre})
-      ON CONFLICT ("id") DO NOTHING
+      INSERT INTO "users" ("id", "email", "nombre", "password_hash")
+      VALUES (${DEMO.usuario.id}, ${DEMO.usuario.email}, ${DEMO.usuario.nombre}, ${passwordHash})
+      ON CONFLICT ("id") DO UPDATE SET "password_hash" = EXCLUDED."password_hash"
     `;
 
     // Fija el contexto de tenant en la sesión (is_local=false → persiste entre statements de
