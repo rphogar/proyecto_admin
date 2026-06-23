@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../db/database.service';
-import { memberships, rolePermissions, tenants } from '../db/schema';
+import { memberships, permissions, rolePermissions, roles, tenants } from '../db/schema';
 import { withTenant } from '../tenant/with-tenant';
 import { withUser } from '../tenant/with-user';
 
@@ -10,6 +10,14 @@ export interface MembresiaEmpresa {
   tenantId: string;
   nombre: string;
   rol: string;
+}
+
+/** Catálogo RBAC global para el visor de permisos por rol (P29, docs/06 M12). */
+export interface CatalogoRbac {
+  roles: { code: string; descripcion: string }[];
+  permisos: { code: string; descripcion: string }[];
+  /** Por cada rol, los códigos de permiso que tiene concedidos. */
+  matriz: Record<string, string[]>;
 }
 
 /**
@@ -102,6 +110,29 @@ export class PermisosService {
     }
     const permisos = await this.permisosDeRol(rol);
     return permisos.has(permiso);
+  }
+
+  /**
+   * Catálogo RBAC completo (roles, permisos y matriz) para el visor de permisos por rol (P29). Es
+   * GLOBAL (no tenant-scoped): se lee directo, sin RLS. La matriz reutiliza `matrizPermisos()`.
+   */
+  async catalogo(): Promise<CatalogoRbac> {
+    const [filasRoles, filasPermisos, matriz] = await Promise.all([
+      this.database.db
+        .select({ code: roles.code, descripcion: roles.descripcion })
+        .from(roles)
+        .orderBy(roles.code),
+      this.database.db
+        .select({ code: permissions.code, descripcion: permissions.descripcion })
+        .from(permissions)
+        .orderBy(permissions.code),
+      this.matrizPermisos(),
+    ]);
+    const matrizObj: Record<string, string[]> = {};
+    for (const r of filasRoles) {
+      matrizObj[r.code] = [...(matriz.get(r.code) ?? new Set<string>())].sort();
+    }
+    return { roles: filasRoles, permisos: filasPermisos, matriz: matrizObj };
   }
 
   /** Invalida la caché (útil tras administrar el catálogo o en tests). */

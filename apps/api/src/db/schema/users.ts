@@ -18,6 +18,13 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   nombre: text('nombre').notNull(),
   status: text('status').notNull().default('active'),
+  /**
+   * Email verificado (P29). Se pone true al aceptar una invitación (el clic en el enlace prueba
+   * control del buzón) y la migración 0074 marca true a todos los usuarios preexistentes. Deja
+   * listo el dato para activar el gate del login (`TODO(verificacion-email)` en `auth.service.ts`);
+   * activarlo exige primero sembrar `email_verified=true` en `seed-demo` para no romper el demo.
+   */
+  emailVerified: boolean('email_verified').notNull().default(false),
   totpSecret: text('totp_secret'),
   totpEnabled: boolean('totp_enabled').notNull().default(false),
   totpConfirmedAt: timestamp('totp_confirmed_at', { withTimezone: true }),

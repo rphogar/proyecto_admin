@@ -17,6 +17,7 @@ import { asegurarEmpresaDelTenant } from '../maestros/companias';
 import { asRecord, optionalString, requireDecimal, requireEnum, requireString, requireUuid } from '../maestros/validacion';
 import { requireTenantContext } from '../tenant/tenant-context';
 import { withTenant } from '../tenant/with-tenant';
+import { SegregacionService } from '../usuarios/segregacion.service';
 import { cargarCuentas, cargarParametrosNomina, requerirPeriodoAbierto } from './nomina-comun';
 
 export type Corrida = typeof nominaCorridas.$inferSelect;
@@ -43,6 +44,7 @@ export class CorridasService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly segregacion: SegregacionService,
   ) {}
 
   async crear(body: unknown): Promise<CorridaConRecibos> {
@@ -197,6 +199,14 @@ export class CorridasService {
       const ctx = requireTenantContext();
       const corrida = await this.corridaDe(tx, id, companyId);
       if (corrida.estado !== 'BORRADOR') throw new BadRequestException(`La corrida está en estado ${corrida.estado}; solo se aprueba una BORRADOR`);
+      // Separación de deberes (regla 13, P29): quien aprueba la corrida ≠ quien la creó, si el tenant
+      // mantiene la regla activa (default seguro). Reusa el patrón de `ajustes.service.ts`.
+      await this.segregacion.exigirDistinto(
+        tx,
+        'nomina.aprobar_distinto_creador',
+        corrida.createdBy,
+        ctx.userId ?? null,
+      );
       const [fila] = await tx
         .update(nominaCorridas)
         .set({ estado: 'APROBADA', aprobadaPor: ctx.userId ?? null, aprobadaEn: new Date() })

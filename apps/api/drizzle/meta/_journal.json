@@ -512,6 +512,34 @@
       "when": 1782169655347,
       "tag": "0072_memberships_self_read",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1782178114642,
+      "tag": "0073_usuarios_invitaciones_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1782178115642,
+      "tag": "0074_usuarios_rls_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1782178116642,
+      "tag": "0075_usuarios_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1782178117642,
+      "tag": "0076_seed_usuarios_permissions",
+      "breakpoints": true
     }
   ]
 }

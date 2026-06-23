@@ -8,6 +8,7 @@ import { asegurarEmpresaDelTenant } from '../maestros/companias';
 import { asRecord, requireEnum, requireUuid } from '../maestros/validacion';
 import { requireTenantContext } from '../tenant/tenant-context';
 import { withTenant } from '../tenant/with-tenant';
+import { SegregacionService } from '../usuarios/segregacion.service';
 import { type MovBanco, type MovSistema, type Sugerencia, sugerirConciliaciones, type TipoMatch } from './matching';
 
 /** Línea de banco para la UI de dos columnas. */
@@ -50,6 +51,7 @@ export class ConciliacionService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly segregacion: SegregacionService,
   ) {}
 
   /** Sugerencias del motor para una cuenta bancaria (dos columnas + matches con score). */
@@ -72,6 +74,18 @@ export class ConciliacionService {
       const ctx = requireTenantContext();
       await asegurarEmpresaDelTenant(tx, e.companyId);
       const banco = await cargarBanco(tx, e.companyId, e.bankAccountId);
+
+      // Separación de deberes (regla 13, P29): quien concilia ≠ quien importó el extracto, si el
+      // tenant mantiene la regla activa. El importador vive en `bank_statements.importado_por`.
+      const lineasBancoConciliadas = e.grupos.flatMap((g) => g.statementLineIds);
+      const importadores = await importadoresDeLineas(tx, e.companyId, lineasBancoConciliadas);
+      const actorImporto = ctx.userId != null && importadores.has(ctx.userId);
+      await this.segregacion.exigirDistinto(
+        tx,
+        'tesoreria.concilia_distinto_registra',
+        actorImporto ? ctx.userId! : null,
+        ctx.userId ?? null,
+      );
 
       let filas = 0;
       for (const grupo of e.grupos) {
@@ -136,6 +150,21 @@ export class ConciliacionService {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Conjunto de usuarios que importaron los extractos de las líneas de banco indicadas. */
+async function importadoresDeLineas(
+  tx: DatabaseTx,
+  companyId: string,
+  statementLineIds: string[],
+): Promise<Set<string>> {
+  if (statementLineIds.length === 0) return new Set();
+  const filas = await tx
+    .select({ importadoPor: bankStatements.importadoPor })
+    .from(statementLines)
+    .innerJoin(bankStatements, eq(statementLines.statementId, bankStatements.id))
+    .where(and(eq(statementLines.companyId, companyId), inArray(statementLines.id, statementLineIds)));
+  return new Set(filas.map((f) => f.importadoPor).filter((x): x is string => x !== null));
+}
 
 async function cargarBanco(tx: DatabaseTx, companyId: string, bankAccountId: string): Promise<typeof bankAccounts.$inferSelect> {
   const [banco] = await tx

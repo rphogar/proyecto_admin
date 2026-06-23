@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UsuariosModule } from '../usuarios/usuarios.module';
 import { AriArcService } from './ari-arc.service';
 import { ConceptosService } from './conceptos.service';
 import { CorridasService } from './corridas.service';
@@ -16,6 +17,7 @@ import { TrabajadoresService } from './trabajadores.service';
  * y `AuditService` llegan por los módulos globales.
  */
 @Module({
+  imports: [UsuariosModule],
   controllers: [NominaController],
   providers: [
     TrabajadoresService,

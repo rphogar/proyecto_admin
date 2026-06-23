@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UsuariosModule } from '../usuarios/usuarios.module';
 import { BancosService } from './bancos.service';
 import { CierresCajaService } from './cierres-caja.service';
 import { ConciliacionService } from './conciliacion.service';
@@ -16,6 +17,7 @@ import { TransferenciasService } from './transferencias.service';
  * llegan por los módulos globales.
  */
 @Module({
+  imports: [UsuariosModule],
   controllers: [TesoreriaController],
   providers: [PosicionService, BancosService, TransferenciasService, CierresCajaService, ImportadoresService, ConciliacionService, RevaluacionService],
   exports: [PosicionService, TransferenciasService, CierresCajaService, ImportadoresService, ConciliacionService, RevaluacionService],

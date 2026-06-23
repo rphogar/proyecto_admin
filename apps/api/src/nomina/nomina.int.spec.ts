@@ -3,6 +3,7 @@ import { calcularDigitoVerificadorRif, Decimal } from '@contave/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../audit/audit.service';
+import { SegregacionService } from '../usuarios/segregacion.service';
 import type { DatabaseService } from '../db/database.service';
 import { journalLines, nominaCorridas, nominaPrestacionesKardex } from '../db/schema';
 import { seedPlanDeCuentas } from '../ledger/seed-plan-cuentas';
@@ -47,7 +48,11 @@ describe('Nómina — integración DB (P15)', () => {
     const database = { db: tdb.appDb } as DatabaseService;
     trabajadores = new TrabajadoresService(database, new AuditService());
     conceptos = new ConceptosService(database, new AuditService());
-    corridas = new CorridasService(database, new AuditService());
+    corridas = new CorridasService(
+      database,
+      new AuditService(),
+      new SegregacionService(database, new AuditService()),
+    );
     prestaciones = new PrestacionesService(database, new AuditService());
 
     await tdb.ownerSql`insert into tenants (id, nombre, slug) values

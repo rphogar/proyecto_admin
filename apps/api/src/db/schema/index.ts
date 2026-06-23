@@ -5,6 +5,10 @@ export * from './tenants';
 export * from './users';
 export * from './rbac';
 export * from './memberships';
+// P29 — Gestión de usuarios por tenant: invitaciones por email (tenant-scoped) y configuración de
+// separación de deberes. La aceptación de invitación es pre-tenant (función SECURITY DEFINER).
+export * from './invitations';
+export * from './segregacion-deberes';
 // P27 — Autenticación: sesión rotativa, recuperación y bitácora de identidad (tablas globales).
 export * from './refresh-tokens';
 export * from './password-reset-tokens';

@@ -5,6 +5,7 @@ import { calcularDigitoVerificadorRif } from '@contave/shared';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../audit/audit.service';
+import { SegregacionService } from '../usuarios/segregacion.service';
 import type { DatabaseService } from '../db/database.service';
 import { revaluaciones, statementLines, transferencias } from '../db/schema';
 import { seedPlanDeCuentas } from '../ledger/seed-plan-cuentas';
@@ -59,7 +60,11 @@ describe('Tesorería — integración DB (P11)', () => {
     transfers = new TransferenciasService(database, audit);
     cierres = new CierresCajaService(database, audit);
     importadores = new ImportadoresService(database, audit);
-    conciliacion = new ConciliacionService(database, audit);
+    conciliacion = new ConciliacionService(
+      database,
+      audit,
+      new SegregacionService(database, audit),
+    );
     revaluacion = new RevaluacionService(database, audit);
     posicion = new PosicionService(database);
 

@@ -21,9 +21,10 @@ import { TasasModule } from './tasas/tasas.module';
 import { TenantContextOpcionalMiddleware } from './tenant/tenant-context-opcional.middleware';
 import { TenantContextMiddleware } from './tenant/tenant-context.middleware';
 import { TesoreriaModule } from './tesoreria/tesoreria.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule],
+  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, UsuariosModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {
@@ -40,6 +41,10 @@ export class AppModule implements NestModule {
       .exclude(
         { path: 'health', method: RequestMethod.ALL },
         { path: 'auth/(.*)', method: RequestMethod.ALL },
+        // P29 — Aceptación de invitación (peek/aceptar): PRE-tenant, resuelve por token (ver
+        // InvitacionesController). La ADMINISTRACIÓN (`/usuarios/*`) sí pasa por el middleware.
+        { path: 'invitaciones', method: RequestMethod.ALL },
+        { path: 'invitaciones/(.*)', method: RequestMethod.ALL },
         RUTA_TASA_PUBLICA,
       )
       .forRoutes('*');

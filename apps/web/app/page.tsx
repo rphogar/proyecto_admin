@@ -39,6 +39,9 @@ export default function Home() {
         <Button variant="outline" asChild>
           <Link href="/portal">Portal del contador</Link>
         </Button>
+        <Button variant="outline" asChild>
+          <Link href="/configuracion/usuarios">Usuarios y roles</Link>
+        </Button>
       </div>
     </main>
   );
