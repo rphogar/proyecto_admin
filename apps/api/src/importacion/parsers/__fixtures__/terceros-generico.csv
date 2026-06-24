@@ -1,0 +1,6 @@
+tipo;rif;razon_social;condicion_iva;es_agente_retencion_iva;pct_retencion_iva;es_agente_retencion_islr;direccion_fiscal;email;telefono;dias_credito
+cliente;J-30112233-0;Comercial Norte C.A.;ordinario;no;;no;Av. 1, Caracas;compras@norte.com;0212-1112233;30
+proveedor;V-10203040-7;Juan Perez;especial;si;75;si;Calle 2, Maracay;;0243-2223344;0
+ambos;J-40556677-9;Servicios Sur C.A.;ordinario;no;;no;Av. 3, Valencia;ventas@sur.com;;15
+cliente;J-30112233-0;Comercial Norte C.A. (repetido);ordinario;no;;no;Av. 1, Caracas;;;30
+cliente;;Tercero sin RIF;ordinario;no;;no;;;;0

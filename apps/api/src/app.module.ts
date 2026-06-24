@@ -10,6 +10,7 @@ import { DatabaseModule } from './db/database.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { FacturacionDigitalModule } from './facturacion-digital/facturacion-digital.module';
 import { HealthController } from './health/health.controller';
+import { ImportacionModule } from './importacion/importacion.module';
 import { ImpresionFiscalModule } from './impresion-fiscal/impresion-fiscal.module';
 import { ImpuestosModule } from './impuestos/impuestos.module';
 import { InventarioModule } from './inventario/inventario.module';
@@ -25,7 +26,7 @@ import { TesoreriaModule } from './tesoreria/tesoreria.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, UsuariosModule, OnboardingModule],
+  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, UsuariosModule, OnboardingModule, ImportacionModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {

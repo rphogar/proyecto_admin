@@ -568,6 +568,13 @@
       "when": 1782186637540,
       "tag": "0080_seed_onboarding_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1782186638540,
+      "tag": "0081_seed_importacion_permissions",
+      "breakpoints": true
     }
   ]
 }

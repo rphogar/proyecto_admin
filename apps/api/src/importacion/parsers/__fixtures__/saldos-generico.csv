@@ -1,0 +1,4 @@
+cuenta;naturaleza;descripcion;moneda;monto;rate_bcv;sku;cantidad;fecha_origen
+1.1.01;ACTIVO;Caja Bs;VES;5.000,00;;;;
+1.1.04;ACTIVO;Banco custodia USD;USD;1000.00;40.50;;;
+1.4;ACTIVO;Inventario inicial;USD;300.00;40.50;PROD-100;100;2025-12-01

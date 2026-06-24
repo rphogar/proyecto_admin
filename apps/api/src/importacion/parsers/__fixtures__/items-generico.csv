@@ -1,0 +1,5 @@
+sku;descripcion;tipo;alicuota_iva;unidad;costo;precio;moneda
+PROD-100;Arroz 1kg;producto;REDUCIDA;UND;1.20;2.00;USD
+PROD-200;Aceite 1L;producto;GENERAL;UND;3.50;5.00;USD
+SERV-100;Asesoria contable;servicio;GENERAL;HORA;;30.00;USD
+PROD-100;Arroz 1kg (repetido);producto;REDUCIDA;UND;1.20;2.00;USD
