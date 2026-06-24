@@ -108,3 +108,8 @@ export * from './fiscal-print-queue';
 // electrónica y conservación del documento digital (digital_invoice_deliveries), tras asignar el
 // número de control digital por la imprenta autorizada. Desacoplada como las demás colas.
 export * from './digital-invoice-deliveries';
+// P30 — Onboarding (alta guiada de empresa, docs/06 flujo #5, caso 45): marcador idempotente de la
+// apertura que enlaza la empresa con su asiento de apertura (los saldos viven en journal_lines /
+// stock_moves). La precarga (plan, plantillas, métodos de pago, series, período) reusa las tablas ya
+// existentes; aquí solo se añade el seam de apertura.
+export * from './company-aperturas';

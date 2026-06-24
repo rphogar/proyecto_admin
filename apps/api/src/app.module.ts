@@ -15,6 +15,7 @@ import { ImpuestosModule } from './impuestos/impuestos.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { MaestrosModule } from './maestros/maestros.module';
 import { NominaModule } from './nomina/nomina.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { PortalModule } from './portal/portal.module';
 import { SeguridadModule } from './seguridad/seguridad.module';
 import { TasasModule } from './tasas/tasas.module';
@@ -24,7 +25,7 @@ import { TesoreriaModule } from './tesoreria/tesoreria.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 @Module({
-  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, UsuariosModule],
+  imports: [DatabaseModule, AuditModule, SeguridadModule, AuthModule, TasasModule, MaestrosModule, DocumentosModule, CobrosModule, ComprasModule, ImpuestosModule, TesoreriaModule, InventarioModule, ContabilidadModule, DashboardModule, NominaModule, PortalModule, CumplimientoModule, ImpresionFiscalModule, FacturacionDigitalModule, UsuariosModule, OnboardingModule],
   controllers: [HealthController],
 })
 export class AppModule implements NestModule {

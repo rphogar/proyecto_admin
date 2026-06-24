@@ -178,6 +178,19 @@ export type {
   ResultadoProvisionesMes,
 } from './nomina';
 
+// P30 — Inferencia del perfil tributario al dar de alta una empresa (docs/02 §1): de tipo de
+// contribuyente + forma jurídica deriva las consecuencias (cobra IVA, periodicidad, agente de
+// retención IVA/ISLR, percibe IGTF, exclusión de ajuste por inflación, ISLR PJ, series a precargar).
+export { inferirPerfilTributario } from './contribuyente/inferir-perfil';
+export type {
+  TipoContribuyente,
+  FormaJuridica,
+  PeriodicidadIva,
+  RiesgoIvss as RiesgoIvssContribuyente,
+  PerfilInput,
+  PerfilInferido,
+} from './contribuyente/inferir-perfil';
+
 // P6 — Validador PRE-EMISIÓN de requisitos de facturación (00071/00102/00121): función pura que
 // devuelve la lista de incumplimientos antes de emitir un documento fiscal.
 export { validarRequisitosFactura } from './facturacion/validar-requisitos';

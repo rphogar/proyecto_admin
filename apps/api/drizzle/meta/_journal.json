@@ -540,6 +540,34 @@
       "when": 1782178117642,
       "tag": "0076_seed_usuarios_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1782186634540,
+      "tag": "0077_onboarding_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1782186635540,
+      "tag": "0078_onboarding_rls_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1782186636540,
+      "tag": "0079_onboarding_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1782186637540,
+      "tag": "0080_seed_onboarding_permissions",
+      "breakpoints": true
     }
   ]
 }
