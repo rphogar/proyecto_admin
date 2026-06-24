@@ -33,3 +33,28 @@ jobs:
       # ubuntu-latest trae Docker; no se necesitan `services:` en el YAML.
       - name: Tests de integración (DB)
         run: pnpm --filter @contave/api test:int
+
+  # e2e de UI (P32): Playwright contra la app Next real con el backend mockeado a nivel de red.
+  # No necesita Postgres ni Docker; cubre login+2FA, cambio de empresa, sesión expirada → re-login,
+  # 403 con mensaje claro (caso 54), 0 filas de RLS (caso 55) y el banner de tasa rezagada (caso 57).
+  e2e-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Habilitar Corepack (pnpm)
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar navegador de Playwright
+        run: pnpm --filter @contave/web exec playwright install --with-deps chromium
+
+      - name: e2e de UI (Playwright)
+        run: pnpm --filter @contave/web test:e2e

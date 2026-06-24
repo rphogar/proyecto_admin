@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { login, login2fa } from '@/lib/auth-api';
 import { useEmpresaActiva } from '@/lib/empresa-activa';
+import { PARAM_SESION_EXPIRADA } from '@/lib/sesion-eventos';
 
 /**
  * Login real (P28): email + password y, si el usuario tiene 2FA, un segundo paso con el código
@@ -21,6 +22,14 @@ export default function LoginPage() {
   const [codigo, setCodigo] = useState('');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expirada, setExpirada] = useState(false);
+
+  // Aviso de "sesión expirada": el guardia redirige aquí con `?expirada=1` tras un 401. Se lee del
+  // `window` en un efecto (no `useSearchParams`) para no exigir un límite de Suspense en build.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setExpirada(params.get(PARAM_SESION_EXPIRADA) === '1');
+  }, []);
 
   const entrar = async (emitida: Parameters<typeof iniciarSesion>[0]) => {
     await iniciarSesion(emitida);
@@ -64,6 +73,15 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
       <h1 className="text-2xl font-bold tracking-tight">Ingresar a ContaVE</h1>
+
+      {expirada && (
+        <p
+          role="status"
+          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          Tu sesión expiró por seguridad. Vuelve a iniciar sesión para continuar.
+        </p>
+      )}
 
       {reto === null ? (
         <form onSubmit={(e) => void onSubmitCredenciales(e)} className="flex flex-col gap-3">

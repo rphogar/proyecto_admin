@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   cambiarEmpresa as apiCambiarEmpresa,
@@ -14,6 +15,7 @@ import {
   limpiarSesion,
   type SesionActiva,
 } from '@/lib/contexto-sesion';
+import { alExpirarSesion, PARAM_SESION_EXPIRADA } from '@/lib/sesion-eventos';
 
 /**
  * Sesión/empresa activa (P28, docs/06: "selector de empresa" multi-empresa). La sesión real (access
@@ -58,6 +60,8 @@ async function construirSesion(emitida: SesionEmitida): Promise<SesionActiva> {
 }
 
 export function EmpresaActivaProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [sesion, setSesion] = useState<SesionActiva | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,6 +90,19 @@ export function EmpresaActivaProvider({ children }: { children: ReactNode }) {
     },
     [aplicar],
   );
+
+  // Guardia de sesión expirada (P32): un 401 en cualquier llamada de negocio emite el evento; aquí se
+  // cierra la sesión local y se manda al login con el aviso. Se evita el redirect si ya estamos en
+  // `/login` (p.ej. el 401 de un refresh fallido durante el propio login) para no entrar en bucle.
+  useEffect(() => {
+    return alExpirarSesion(() => {
+      const habiaSesion = leerSesion() !== null;
+      salir();
+      if (habiaSesion && pathname !== '/login') {
+        router.replace(`/login?${PARAM_SESION_EXPIRADA}=1`);
+      }
+    });
+  }, [salir, router, pathname]);
 
   const cambiarEmpresa = useCallback(
     async (tenantId: string) => {

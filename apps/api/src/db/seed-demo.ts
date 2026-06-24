@@ -4,9 +4,11 @@ import { hashPassword } from '../seguridad/password';
 import { DEMO } from './demo-fixtures';
 
 /**
- * Siembra la empresa DEMO para desarrollo (un tenant, un usuario owner, una empresa y una tasa
- * BCV global del día). Idempotente (`ON CONFLICT DO NOTHING`). NO es una migración a propósito:
- * los datos demo no deben viajar a producción; esto se corre a mano con `pnpm db:seed-demo`.
+ * Siembra la empresa DEMO para **desarrollo local y fixtures de CI** (un tenant, un usuario owner,
+ * una empresa y una tasa BCV global del día). Idempotente (`ON CONFLICT DO NOTHING`). NO es una
+ * migración a propósito y **no viaja a producción**: se corre a mano con `pnpm db:seed-demo` (y la
+ * entrada CLI rechaza `NODE_ENV=production`). El arranque productivo crea el primer `owner` real por
+ * el alta de cuenta, nunca con este seed (ver `docs/12-ARRANQUE-PRODUCTIVO.md`).
  *
  * Conecta como el OWNER (`DATABASE_URL`), no como el rol de aplicación: las tablas tenant-scoped
  * tienen FORCE ROW LEVEL SECURITY, así que igual hay que fijar `app.tenant_id` en la sesión para

@@ -1,22 +1,24 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { Providers } from '@/app/providers';
 import Home from '@/app/page';
 
-// Home incluye el widget de tasa (TanStack Query) → requiere un QueryClientProvider.
-function renderHome() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={client}>
-      <Home />
-    </QueryClientProvider>,
-  );
-}
+// La home monta los providers reales (TanStack Query + empresa activa); este último usa el router de
+// Next, que en jsdom no está montado → se mockea. El widget de tasa hace IO; con `retry:false` el
+// fallo de red cae en el estado de error sin romper el render (lo cubre el e2e `home.spec.ts`).
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/',
+}));
 
 describe('Home', () => {
-  it('muestra el nombre del producto y el CTA', () => {
-    renderHome();
+  it('muestra el nombre del producto y el acceso al negocio', () => {
+    render(
+      <Providers>
+        <Home />
+      </Providers>,
+    );
     expect(screen.getByRole('heading', { name: 'ContaVE' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Comenzar' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Mi negocio hoy' })).toBeInTheDocument();
   });
 });

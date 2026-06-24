@@ -8,8 +8,10 @@ PYME venezolana. Está pensada para validar a mano que cada módulo funciona de 
 > usuario/clave (Argon2), JWT de sesión acotado al tenant, refresh rotativo, 2FA TOTP y
 > **multi-empresa con cambio seguro**. El contexto de tenant se deriva del token firmado, nunca de
 > cabeceras del cliente. En desarrollo se entra con el **login real** usando las credenciales
-> sembradas por `db:seed-demo` (`demo@contave.test` / `demo-contave-12345`). No subir el seed demo
-> a producción (se ejecuta a mano y nunca viaja).
+> sembradas por `db:seed-demo` (`demo@contave.test` / `demo-contave-12345`). El **login demo
+> (`/dev/sesion`) fue retirado** (P28); el `db:seed-demo` quedó **solo para desarrollo local y
+> fixtures de CI** y nunca viaja a producción. Para poner el sistema en producción (provisión del
+> primer `owner` real, sin datos demo), ver **`docs/12-ARRANQUE-PRODUCTIVO.md`**.
 
 ---
 

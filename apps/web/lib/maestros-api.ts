@@ -19,6 +19,17 @@ export class ApiError extends Error {
   }
 }
 
+/** Mensaje por defecto cuando la API no manda uno: claro y en español para 401/403 (caso 54). */
+function mensajePorEstado(status: number): string {
+  if (status === 401) {
+    return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+  }
+  if (status === 403) {
+    return 'No tienes permiso para realizar esta acción.';
+  }
+  return `Error ${status}`;
+}
+
 async function parseError(resp: Response): Promise<never> {
   let body: unknown;
   try {
@@ -29,7 +40,7 @@ async function parseError(resp: Response): Promise<never> {
   const msg =
     body && typeof body === 'object' && 'message' in body
       ? String((body as { message: unknown }).message)
-      : `Error ${resp.status}`;
+      : mensajePorEstado(resp.status);
   throw new ApiError(resp.status, msg, body);
 }
 
